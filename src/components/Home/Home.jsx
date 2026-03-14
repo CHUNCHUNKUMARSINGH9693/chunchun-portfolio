@@ -41,7 +41,7 @@ const Home = () => {
           </p> */}
           {/* Resume Button */}
           <a
-            href="https://drive.google.com/file/d/1cWVykPaMhYTbt2B9zZN2IZDNiSKdEZGx/view?usp=sharing"
+            href="https://drive.google.com/file/d/1XM8U38hn6GVzlipeN31NX77a37FLk9Xg/view"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block text-white py-3 px-8 rounded-full mt-5 text-lg font-bold transition duration-300 transform hover:scale-105"
