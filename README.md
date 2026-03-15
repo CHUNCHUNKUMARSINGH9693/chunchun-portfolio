@@ -4,6 +4,7 @@ A modern, responsive, and animated developer portfolio built using **React.js** 
 This portfolio showcases my **skills, projects, experience, and education** as a Full Stack Developer.
 
 ## 🚀 Live Demo
+🔗 [View Portfolio](https://portfolio-five-flax-95.vercel.app/)
 
 
 ## 🛠️ Tech Stack
