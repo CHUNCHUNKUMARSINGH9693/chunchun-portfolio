@@ -35,10 +35,6 @@ const Home = () => {
               )}
             />
           </h3>
-          {/* About Me Paragraph */}
-          {/* <p className="text-base sm:text-lg md:text-lg text-gray-400 mb-10 mt-8 leading-relaxed">
-           I am a passionate full-stack developer with strong knowledge of building web applications. Skilled in both front-end and back-end development, I specialize in the MERN stack and modern technologies to create seamless user experiences and efficient solutions. 
-          </p> */}
           {/* Resume Button */}
           <a
             href="https://drive.google.com/file/d/1XM8U38hn6GVzlipeN31NX77a37FLk9Xg/view"
