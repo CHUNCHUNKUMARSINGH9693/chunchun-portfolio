@@ -19,7 +19,7 @@ const caseStudies = {
     challenges: 'Integrating async chat responses while maintaining MongoDB connection states.',
     solutions: 'Configured Mongoose/MongoDB connection pooling, ensuring efficient database operations and avoiding connection leaks under concurrent requests.',
     github: 'https://github.com/CHUNCHUNKUMARSINGH9693/ecommerce',
-    demo: 'https://ai-ecommerce-demo.example.com',
+    demo: 'https://ecommerce-tau-roan.vercel.app/',
     tech: ['React.js', 'Node.js', 'Express.js', 'MongoDB', 'JWT', 'bcrypt', 'Tailwind CSS', 'Gemini AI', 'Axios']
   },
   'ai-assisted-hospital-management': {
@@ -36,7 +36,7 @@ const caseStudies = {
     challenges: 'Avoiding overlapping doctor appointments during concurrent registrations.',
     solutions: 'Applied MongoDB indexing constraints and query checks. Document validations verify doctor availability ranges before saving new entries.',
     github: 'https://github.com/CHUNCHUNKUMARSINGH9693/E-Hospital-Management-System',
-    demo: 'https://hospital-demo.example.com',
+    demo: 'https://e-hospital-management-system-2mwu.vercel.app/',
     tech: ['React.js', 'Axios', 'Node.js', 'Express.js', 'MongoDB', 'Tailwind CSS', 'Gemini AI', 'express-validator']
   },
   'food-discovery-ordering-platform': {

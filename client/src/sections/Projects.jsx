@@ -16,7 +16,7 @@ const initialProjects = [
     technologies: ['React', 'Axios', 'Node.js', 'Express.js', 'MongoDB', 'Tailwind CSS', 'JWT','REST APIs', 'bcrypt', 'OAuth', 'Gemini AI'],
     features: ['User registration & Login', 'JWT authentication & Role-based panels', 'Shopping cart state & checkout flow', 'Product category searches & filters', 'AI Shopping Assistant chatbot in real-time'],
     github_url: 'https://github.com/CHUNCHUNKUMARSINGH9693/ecommerce',
-    live_url: 'https://ai-ecommerce-demo.example.com',
+    live_url: 'https://ecommerce-tau-roan.vercel.app/',
     featured: true
   },
   {
@@ -28,7 +28,7 @@ const initialProjects = [
     technologies: ['React', 'Axios', 'Node.js', 'Express.js', 'MongoDB', 'Tailwind CSS','JWT', 'bcrypt', 'OAuth', 'Gemini AI'],
     features: ['Patient registration & records management', 'Doctor shifts & appointment booking', 'General AI Assistant for navigation & FAQ help (no medical diagnoses)', 'Protected admin dashboard panels', 'Prescription and pharmacy status records'],
     github_url: 'https://github.com/CHUNCHUNKUMARSINGH9693/E-Hospital-Management-System',
-    live_url: 'https://hospital-demo.example.com',
+    live_url: ' https://e-hospital-management-system-2mwu.vercel.app/',
     featured: true
   },
   {

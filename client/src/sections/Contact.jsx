@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { FiMail, FiMapPin, FiLinkedin, FiGithub, FiSend, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import emailjs from '@emailjs/browser';
+import { FiMail, FiMapPin, FiLinkedin, FiGithub, FiSend, FiCheckCircle, FiAlertCircle, FiLoader } from 'react-icons/fi';
 import { contactService } from '../services/api';
 
+const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_4g3qygg';
+const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_0n5ff79';
+const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'nCVPBgIsobrLMnnLg';
+
 const Contact = () => {
+  const formRef = useRef(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -27,26 +33,82 @@ const Contact = () => {
     setStatus(null);
     setMsgText('');
 
+    let emailDelivered = false;
+    let backendSaved = false;
+
+    // 1. Primary Attempt: EmailJS direct to Gmail
     try {
-      const response = await contactService.send(formData);
-      if (response.success) {
-        setStatus('success');
-        setMsgText(response.message || 'Message sent successfully!');
-        setFormData({ name: '', email: '', subject: '', message: '' }); // reset form
-      } else {
-        setStatus('error');
-        setMsgText(response.message || 'Validation failed. Please verify your details.');
-      }
-    } catch (error) {
-      console.error('Contact submission failed:', error.message);
-      setStatus('error');
-      setMsgText(
-        error.response?.data?.message || 
-        'Could not submit message. Please verify if the backend server and MySQL database are running.'
+      const templateParams = {
+        name: formData.name,
+        user_name: formData.name,
+        from_name: formData.name,
+        email: formData.email,
+        user_email: formData.email,
+        from_email: formData.email,
+        reply_to: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+      };
+
+      await emailjs.send(
+        SERVICE_ID,
+        TEMPLATE_ID,
+        templateParams,
+        PUBLIC_KEY
       );
-    } finally {
-      setLoading(false);
+      emailDelivered = true;
+    } catch (emailjsErr) {
+      console.warn('EmailJS direct send failed, triggering automatic failover:', emailjsErr);
     }
+
+    // 2. Automatic Failover: Direct delivery to Gmail via FormSubmit
+    if (!emailDelivered) {
+      try {
+        const fallbackRes = await fetch('https://formsubmit.co/ajax/chunchunkrsingh31@gmail.com', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            subject: formData.subject || 'Portfolio Contact Submission',
+            message: formData.message,
+            _captcha: 'false',
+            _template: 'table'
+          })
+        });
+        const fallbackData = await fallbackRes.json();
+        if (fallbackRes.ok && (fallbackData.success === 'true' || fallbackData.success === true || fallbackData.message)) {
+          emailDelivered = true;
+        }
+      } catch (fallbackErr) {
+        console.warn('Direct fallback delivery error:', fallbackErr);
+      }
+    }
+
+    // 3. Database Persistence: Store in local MySQL database for Admin Dashboard
+    try {
+      const backendRes = await contactService.send(formData);
+      if (backendRes && backendRes.success) {
+        backendSaved = true;
+      }
+    } catch (backendErr) {
+      console.warn('Backend database sync note:', backendErr.message);
+    }
+
+    // 4. Update UI Status based on result
+    if (emailDelivered || backendSaved) {
+      setStatus('success');
+      setMsgText('Message sent successfully! Thank you for reaching out—I will receive it on my Gmail and get back to you soon.');
+      setFormData({ name: '', email: '', subject: '', message: '' });
+    } else {
+      setStatus('error');
+      setMsgText('Could not deliver message right now. Please email directly at chunchunkumarsingh.cse2021@dscet.ac.in.');
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -79,7 +141,7 @@ const Contact = () => {
                 </div>
                 <div>
                   <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider block">Email Address</span>
-                  <a href="mailto:chunchunsingh@example.com" className="text-sm text-white hover:text-brand-blue transition-colors">chunchunkrsingh31@gmail.com</a>
+                  <a href="mailto:chunchunkumarsingh.cse2021@dscet.ac.in" className="text-sm text-white hover:text-brand-blue transition-colors">chunchunkrsingh31@gmail.com</a>
                 </div>
               </div>
 
@@ -128,7 +190,7 @@ const Contact = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
             >
-              <form onSubmit={handleSubmit} className="space-y-4 font-sans">
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 font-sans">
                 
                 {/* Status messages indicator */}
                 {status === 'success' && (
@@ -204,10 +266,19 @@ const Contact = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-xs font-semibold rounded-lg text-white bg-brand-blue hover:bg-brand-blue/90 disabled:bg-white/5 disabled:text-gray-500 transition-all duration-300 hover:scale-[1.01] gap-1.5 focus:outline-none shadow-md shadow-brand-blue/10"
+                  className="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-xs font-semibold rounded-lg text-white bg-brand-blue hover:bg-brand-blue/90 disabled:bg-white/5 disabled:text-gray-500 transition-all duration-300 hover:scale-[1.01] gap-1.5 focus:outline-none shadow-md shadow-brand-blue/10 cursor-pointer disabled:cursor-not-allowed"
                 >
-                  <FiSend />
-                  <span>{loading ? 'Sending Message...' : 'Send Message'}</span>
+                  {loading ? (
+                    <>
+                      <FiLoader className="animate-spin" size={15} />
+                      <span>Sending Message...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiSend size={15} />
+                      <span>Send Message</span>
+                    </>
+                  )}
                 </button>
               </form>
             </motion.div>

@@ -9,7 +9,7 @@ Your goal is to answer questions from recruiters, interviewers, and visitors abo
 PERSONAL DETAILS:
 - Name: Chunchun Kumar Singh
 - Title: MERN Stack Developer | AI-Powered Web Developer
-- Email: chunchunsingh@example.com (or via the portfolio Contact Form)
+- Email: chunchunkumarsingh.cse2021@dscet.ac.in (or via the portfolio Contact Form)
 - Profile: Recent B.E. Computer Science & Engineering graduate focused on building responsive full-stack web applications using React, Node.js, Express.js, REST APIs, MongoDB, authentication (JWT/bcrypt), and Gemini AI integrations.
 - Education: Bachelor of Engineering (B.E.) in Computer Science & Engineering from Anna University. CGPA: 7.5 (Till May 2025).
 
