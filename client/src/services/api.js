@@ -45,11 +45,20 @@ export const authService = {
     const response = await API.post('/auth/login', credentials);
     return response.data;
   },
+  register: async (userData) => {
+    const response = await API.post('/auth/register', userData);
+    return response.data;
+  },
   getProfile: async () => {
     const response = await API.get('/auth/profile');
     return response.data;
+  },
+  logout: () => {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
   }
 };
+
 
 // Projects Service Endpoints
 export const projectService = {

@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   FiFolder, FiBriefcase, FiLayers, FiAward, FiCpu, FiMessageSquare, 
-  FiLogOut, FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiCheckCircle, FiInfo 
+  FiLogOut, FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiCheckCircle, 
+  FiAlertCircle, FiSearch, FiExternalLink, FiRefreshCw, FiEye, 
+  FiMail, FiCalendar, FiTag, FiShield, FiUser, FiActivity, FiStar, FiFilter
 } from 'react-icons/fi';
 import { 
-  projectService, skillService, experienceService, 
+  authService, projectService, skillService, experienceService, 
   certificationService, achievementService, contactService, aiService 
 } from '../services/api';
 
@@ -14,7 +16,20 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', text: '' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [dbConnected, setDbConnected] = useState(true);
+
   const navigate = useNavigate();
+
+  // Current admin profile state
+  const [adminUser, setAdminUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('adminUser')) || { name: 'Chunchun Kumar Singh', email: 'admin@chunchun.dev', role: 'admin' };
+    } catch {
+      return { name: 'Chunchun Kumar Singh', email: 'admin@chunchun.dev', role: 'admin' };
+    }
+  });
 
   // Data states
   const [projects, setProjects] = useState([]);
@@ -25,21 +40,30 @@ const AdminDashboard = () => {
   const [messages, setMessages] = useState([]);
   const [aiLogs, setAiLogs] = useState([]);
 
-  // Form states (Editing / Creating modal)
-  const [showModal, setShowModal] = useState(false);
-  const [editItem, setEditItem] = useState(null); // If null, we are creating new item
+  // Modals state
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editItem, setEditItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [deleteModal, setDeleteModal] = useState({ show: false, id: null, title: '' });
+  const [logoutModal, setLogoutModal] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [activeTab]);
-
+  // Show Toast Feedback
   const showFeedback = (type, text) => {
     setFeedback({ type, text });
-    setTimeout(() => setFeedback({ type: '', text: '' }), 4000);
+    setTimeout(() => setFeedback({ type: '', text: '' }), 4500);
   };
 
-  const fetchData = async () => {
+  // Fetch data for the active tab and metrics
+  useEffect(() => {
+    fetchActiveData();
+  }, [activeTab]);
+
+  // Initial load: fetch all metric counts
+  useEffect(() => {
+    fetchAllMetrics();
+  }, []);
+
+  const fetchActiveData = async () => {
     setLoading(true);
     try {
       if (activeTab === 'projects') {
@@ -64,47 +88,88 @@ const AdminDashboard = () => {
         const res = await aiService.getHistory();
         if (res.success) setAiLogs(res.data);
       }
+      setDbConnected(true);
     } catch (error) {
-      console.error(`Failed to load ${activeTab} data:`, error.message);
-      showFeedback('error', `Failed to load ${activeTab} data. Verify backend MySQL connection.`);
+      console.warn(`Fetch error for ${activeTab}:`, error.message);
+      setDbConnected(false);
+      showFeedback('error', `Cannot load ${activeTab} from database. Ensure backend server and MySQL are active.`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminUser');
-    navigate('/admin/login');
+  const fetchAllMetrics = async () => {
+    try {
+      const [projRes, expRes, skillRes, certRes, achRes, msgRes, aiRes] = await Promise.allSettled([
+        projectService.getAll(),
+        experienceService.getAll(),
+        skillService.getAll(),
+        certificationService.getAll(),
+        achievementService.getAll(),
+        contactService.getAll(),
+        aiService.getHistory()
+      ]);
+
+      if (projRes.status === 'fulfilled' && projRes.value?.success) setProjects(projRes.value.data);
+      if (expRes.status === 'fulfilled' && expRes.value?.success) setExperience(expRes.value.data);
+      if (skillRes.status === 'fulfilled' && skillRes.value?.success) setSkills(skillRes.value.data);
+      if (certRes.status === 'fulfilled' && certRes.value?.success) setCertifications(certRes.value.data);
+      if (achRes.status === 'fulfilled' && achRes.value?.success) setAchievements(achRes.value.data);
+      if (msgRes.status === 'fulfilled' && msgRes.value?.success) setMessages(msgRes.value.data);
+      if (aiRes.status === 'fulfilled' && aiRes.value?.success) setAiLogs(aiRes.value.data);
+    } catch (err) {
+      console.warn('Metric summary load notice:', err.message);
+    }
   };
 
-  // Open modal for Creating new item
+  // Perform Logout
+  const executeLogout = () => {
+    authService.logout();
+    navigate('/admin/login', { replace: true });
+  };
+
+  // Open Create Form Modal
   const handleOpenCreate = () => {
     setEditItem(null);
     if (activeTab === 'projects') {
-      setFormData({ title: '', slug: '', description: '', technologies: '', features: '', github_url: '', live_url: '', featured: false });
+      setFormData({ 
+        title: '', 
+        slug: '', 
+        description: '', 
+        image: '',
+        technologies: 'React, Node.js, Express, MySQL', 
+        features: 'User Authentication with JWT\nREST API Integration\nResponsive Mobile-first Design', 
+        github_url: 'https://github.com/CHUNCHUNKUMARSINGH9693', 
+        live_url: '', 
+        featured: false 
+      });
     } else if (activeTab === 'experience') {
-      setFormData({ company: '', position: '', description: '', start_date: '', end_date: '', technologies: '' });
+      setFormData({ 
+        company: '', 
+        position: 'Full Stack Developer', 
+        description: '', 
+        start_date: 'Jan 2025', 
+        end_date: 'Present', 
+        technologies: 'React, Node.js, Express, MySQL' 
+      });
     } else if (activeTab === 'skills') {
       setFormData({ category: 'FRONTEND', name: '', description: '' });
     } else if (activeTab === 'certifications') {
-      setFormData({ title: '', organization: '', description: '', certificate_url: '', issue_date: '' });
+      setFormData({ title: '', organization: '', description: '', certificate_url: '', issue_date: '2025' });
     } else if (activeTab === 'achievements') {
-      setFormData({ title: '', organization: '', description: '', year: '' });
+      setFormData({ title: '', organization: '', description: '', year: '2025', image: '' });
     }
-    setShowModal(true);
+    setShowFormModal(true);
   };
 
-  // Open modal for Editing existing item
+  // Open Edit Form Modal
   const handleOpenEdit = (item) => {
     setEditItem(item);
-    
-    // Map items matching schema specifications
     if (activeTab === 'projects') {
       setFormData({
         ...item,
         technologies: Array.isArray(item.technologies) ? item.technologies.join(', ') : item.technologies,
-        features: Array.isArray(item.features) ? JSON.stringify(item.features, null, 2) : item.features
+        features: Array.isArray(item.features) ? item.features.join('\n') : (typeof item.features === 'string' ? item.features : '')
       });
     } else if (activeTab === 'experience') {
       setFormData({
@@ -114,40 +179,32 @@ const AdminDashboard = () => {
     } else {
       setFormData({ ...item });
     }
-    
-    setShowModal(true);
+    setShowFormModal(true);
   };
 
-  // Form input changes listener
+  // Form Input Change Listener
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
-    let newValue = type === 'checkbox' ? checked : value;
+    const val = type === 'checkbox' ? checked : value;
 
-    // Auto generate slugs for projects
     if (activeTab === 'projects' && name === 'title' && !editItem) {
       const slugVal = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       setFormData(prev => ({ ...prev, title: value, slug: slugVal }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: newValue }));
+      setFormData(prev => ({ ...prev, [name]: val }));
     }
   };
 
-  // Submit modal Form
+  // Submit Modal Form (Create / Update)
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setActionLoading(true);
+
     try {
       let response;
       if (activeTab === 'projects') {
-        let techArr = formData.technologies.split(',').map(t => t.trim()).filter(Boolean);
-        let featArr;
-        try {
-          featArr = JSON.parse(formData.features);
-        } catch (err) {
-          // If not valid JSON, default fallback to array strings split by newline
-          featArr = formData.features.split('\n').map(f => f.trim()).filter(Boolean);
-        }
-
+        const techArr = formData.technologies ? formData.technologies.split(',').map(t => t.trim()).filter(Boolean) : [];
+        const featArr = formData.features ? formData.features.split('\n').map(f => f.trim()).filter(Boolean) : [];
         const payload = { ...formData, technologies: techArr, features: featArr };
 
         if (editItem) {
@@ -156,7 +213,7 @@ const AdminDashboard = () => {
           response = await projectService.create(payload);
         }
       } else if (activeTab === 'experience') {
-        let techArr = formData.technologies.split(',').map(t => t.trim()).filter(Boolean);
+        const techArr = formData.technologies ? formData.technologies.split(',').map(t => t.trim()).filter(Boolean) : [];
         const payload = { ...formData, technologies: techArr };
         
         if (editItem) {
@@ -185,394 +242,771 @@ const AdminDashboard = () => {
       }
 
       if (response && response.success) {
-        showFeedback('success', editItem ? 'Item updated successfully!' : 'Item created successfully!');
-        setShowModal(false);
-        fetchData();
+        showFeedback('success', editItem ? 'Record updated successfully!' : 'Record created successfully!');
+        setShowFormModal(false);
+        fetchActiveData();
       } else {
         showFeedback('error', response?.message || 'Transaction failed.');
       }
-
     } catch (error) {
-      console.error('CRUD Submit Error:', error.message);
-      showFeedback('error', error.response?.data?.message || 'Database error occurred. Verify inputs format.');
+      console.error('CRUD Submit Error:', error);
+      showFeedback('error', error.response?.data?.message || 'Database transaction failed. Verify field constraints.');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Delete an item from database
-  const handleDeleteItem = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this record?')) return;
+  // Open Delete Confirmation Modal
+  const requestDelete = (id, title) => {
+    setDeleteModal({ show: true, id, title: title || 'this record' });
+  };
+
+  // Confirm Delete
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return;
     setActionLoading(true);
 
     try {
-      let response;
-      if (activeTab === 'projects') {
-        response = await projectService.delete(id);
-      } else if (activeTab === 'experience') {
-        response = await experienceService.delete(id);
-      } else if (activeTab === 'skills') {
-        response = await skillService.delete(id);
-      } else if (activeTab === 'certifications') {
-        response = await certificationService.delete(id);
-      } else if (activeTab === 'achievements') {
-        response = await achievementService.delete(id);
-      } else if (activeTab === 'messages') {
-        response = await contactService.delete(id);
-      } else if (activeTab === 'ai-logs') {
-        response = await aiService.deleteLog(id);
-      }
+      let res;
+      const id = deleteModal.id;
 
-      if (response && response.success) {
+      if (activeTab === 'projects') res = await projectService.delete(id);
+      else if (activeTab === 'experience') res = await experienceService.delete(id);
+      else if (activeTab === 'skills') res = await skillService.delete(id);
+      else if (activeTab === 'certifications') res = await certificationService.delete(id);
+      else if (activeTab === 'achievements') res = await achievementService.delete(id);
+      else if (activeTab === 'messages') res = await contactService.delete(id);
+      else if (activeTab === 'ai-logs') res = await aiService.deleteLog(id);
+
+      if (res && res.success) {
         showFeedback('success', 'Record deleted successfully.');
-        fetchData();
+        setDeleteModal({ show: false, id: null, title: '' });
+        fetchActiveData();
+      } else {
+        showFeedback('error', res?.message || 'Failed to delete record.');
       }
-    } catch (error) {
-      console.error('CRUD Delete Error:', error.message);
+    } catch (err) {
+      console.error('Delete Error:', err);
       showFeedback('error', 'Delete operation failed.');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Toggle Message read status
+  // Toggle Message read/unread status
   const handleToggleMessageRead = async (id, currentStatus) => {
     try {
       const nextStatus = currentStatus === 'unread' ? 'read' : 'unread';
       const res = await contactService.updateStatus(id, nextStatus);
       if (res.success) {
-        showFeedback('success', `Message status updated to ${nextStatus}`);
-        fetchData();
+        showFeedback('success', `Message status marked as ${nextStatus}.`);
+        fetchActiveData();
       }
-    } catch (error) {
-      console.error('Failed to toggle status:', error.message);
+    } catch (err) {
+      console.error('Status update failed:', err);
+      showFeedback('error', 'Could not update status.');
     }
   };
 
-  const tabsConfig = [
-    { id: 'projects', label: 'Projects', icon: <FiFolder /> },
-    { id: 'experience', label: 'Experience', icon: <FiBriefcase /> },
-    { id: 'skills', label: 'Skills', icon: <FiLayers /> },
-    { id: 'certifications', label: 'Certifications', icon: <FiAward /> },
-    { id: 'achievements', label: 'Achievements', icon: <FiAward /> },
-    { id: 'messages', label: 'Messages', icon: <FiMessageSquare /> },
-    { id: 'ai-logs', label: 'AI Logs', icon: <FiCpu /> }
+  // Navigation tab configuration
+  const tabs = [
+    { id: 'projects', label: 'Projects', icon: <FiFolder />, count: projects.length },
+    { id: 'experience', label: 'Experience', icon: <FiBriefcase />, count: experience.length },
+    { id: 'skills', label: 'Skills', icon: <FiLayers />, count: skills.length },
+    { id: 'certifications', label: 'Certifications', icon: <FiAward />, count: certifications.length },
+    { id: 'achievements', label: 'Achievements', icon: <FiStar />, count: achievements.length },
+    { 
+      id: 'messages', 
+      label: 'Inbox', 
+      icon: <FiMessageSquare />, 
+      count: messages.length, 
+      unread: messages.filter(m => m.status === 'unread').length 
+    },
+    { id: 'ai-logs', label: 'AI Audit Logs', icon: <FiCpu />, count: aiLogs.length }
   ];
 
+  // Filtered dataset calculation based on search query and category
+  const filteredData = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+
+    if (activeTab === 'projects') {
+      return projects.filter(item => {
+        const matchesQuery = !query || 
+          item.title?.toLowerCase().includes(query) || 
+          item.description?.toLowerCase().includes(query) ||
+          item.technologies?.toString().toLowerCase().includes(query);
+        const matchesCategory = categoryFilter === 'ALL' || (categoryFilter === 'FEATURED' && item.featured);
+        return matchesQuery && matchesCategory;
+      });
+    }
+
+    if (activeTab === 'skills') {
+      return skills.filter(item => {
+        const matchesQuery = !query || item.name?.toLowerCase().includes(query) || item.description?.toLowerCase().includes(query);
+        const matchesCategory = categoryFilter === 'ALL' || item.category === categoryFilter;
+        return matchesQuery && matchesCategory;
+      });
+    }
+
+    if (activeTab === 'experience') {
+      return experience.filter(item => 
+        !query || 
+        item.company?.toLowerCase().includes(query) || 
+        item.position?.toLowerCase().includes(query) || 
+        item.technologies?.toString().toLowerCase().includes(query)
+      );
+    }
+
+    if (activeTab === 'certifications') {
+      return certifications.filter(item => 
+        !query || item.title?.toLowerCase().includes(query) || item.organization?.toLowerCase().includes(query)
+      );
+    }
+
+    if (activeTab === 'achievements') {
+      return achievements.filter(item => 
+        !query || item.title?.toLowerCase().includes(query) || item.organization?.toLowerCase().includes(query)
+      );
+    }
+
+    if (activeTab === 'messages') {
+      return messages.filter(item => 
+        !query || 
+        item.name?.toLowerCase().includes(query) || 
+        item.email?.toLowerCase().includes(query) || 
+        item.subject?.toLowerCase().includes(query) || 
+        item.message?.toLowerCase().includes(query)
+      );
+    }
+
+    if (activeTab === 'ai-logs') {
+      return aiLogs.filter(item => 
+        !query || 
+        item.question?.toLowerCase().includes(query) || 
+        item.answer?.toLowerCase().includes(query) ||
+        item.session_id?.toLowerCase().includes(query)
+      );
+    }
+
+    return [];
+  }, [activeTab, projects, skills, experience, certifications, achievements, messages, aiLogs, searchQuery, categoryFilter]);
+
   return (
-    <div className="min-h-screen bg-[#0b0f19] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#080c14] text-gray-100 flex flex-col font-sans select-none">
       
-      {/* Top bar header */}
-      <header className="bg-[#0d1322] border-b border-white/5 px-6 py-4 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-2">
-          <span className="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-blue to-brand-purple flex items-center justify-center font-display font-extrabold text-white text-sm">
+      {/* Top executive SaaS Header */}
+      <header className="bg-[#0d1322] border-b border-white/10 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-lg backdrop-blur-md">
+        
+        {/* Brand identity */}
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-blue via-indigo-500 to-brand-purple flex items-center justify-center font-display font-extrabold text-white text-base shadow-md shadow-brand-blue/20">
             CK
-          </span>
-          <div className="flex flex-col">
-            <span className="font-display font-bold text-white text-sm">Dashboard Manager</span>
-            <span className="text-[9px] text-gray-500 font-mono">portfolio database CRUD</span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="font-display font-bold text-white text-base tracking-wide">
+                Portfolio Command Center
+              </h1>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                dbConnected 
+                  ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' 
+                  : 'bg-amber-500/10 border border-amber-500/30 text-amber-400'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${dbConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                <span>{dbConnected ? 'Database Live' : 'Database Offline'}</span>
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-400 font-mono hidden sm:block">
+              MySQL Relational CMS • Real-time Data Sync
+            </p>
           </div>
         </div>
 
-        <button 
-          onClick={handleLogout}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-white/10 hover:border-red-500/30 text-xs font-mono rounded-lg text-gray-400 hover:text-red-400 bg-white/5 hover:bg-red-500/5 transition-all duration-300"
-        >
-          <FiLogOut />
-          <span>Log Out</span>
-        </button>
-      </header>
-
-      {/* Main split workarea */}
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        
-        {/* Sidebar Nav */}
-        <aside className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-white/5 bg-[#0d1322]/50 p-6 shrink-0 space-y-4">
-          <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Navigation Tables</div>
-          <nav className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-1 pb-3 lg:pb-0">
-            {tabsConfig.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                }}
-                className={`w-full text-left px-3.5 py-3 rounded-lg text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-colors focus:outline-none ${
-                  activeTab === tab.id
-                    ? 'bg-brand-blue/15 text-brand-blue border-l-2 border-brand-blue'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-        </aside>
-
-        {/* Work Panel */}
-        <main className="flex-grow p-6 md:p-8 overflow-y-auto space-y-6">
+        {/* Action Controls & Admin Profile */}
+        <div className="flex items-center gap-3 sm:gap-4">
           
-          {/* Section title & Add buttons */}
-          <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-wide uppercase font-display">{activeTab.replace('-', ' ')}</h2>
-              <p className="text-xs text-gray-500 mt-1">Add, update, or remove database entries in MySQL.</p>
+          {/* View Live Portfolio Link */}
+          <Link
+            to="/"
+            target="_blank"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] hover:border-brand-blue/40 text-xs font-mono text-gray-300 hover:text-white transition-all shadow-sm"
+            title="Open Live Portfolio Website in a new tab"
+          >
+            <span>Live Site</span>
+            <FiExternalLink size={13} className="text-brand-blue" />
+          </Link>
+
+          {/* Admin User Chip */}
+          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/10">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-brand-purple flex items-center justify-center text-white font-bold text-xs">
+              <FiUser size={13} />
             </div>
-            
-            {!['messages', 'ai-logs'].includes(activeTab) && (
-              <button
-                onClick={handleOpenCreate}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-blue hover:bg-brand-blue/95 text-xs font-bold rounded-lg text-white transition-all shadow-md focus:outline-none"
-              >
-                <FiPlus />
-                <span>Create Entry</span>
-              </button>
-            )}
+            <div className="hidden md:flex flex-col text-left">
+              <span className="text-xs font-semibold text-white leading-tight">{adminUser.name}</span>
+              <span className="text-[10px] font-mono text-gray-400 leading-none">{adminUser.email}</span>
+            </div>
+            <span className="hidden lg:inline-block px-1.5 py-0.5 rounded bg-brand-purple/20 text-brand-purple border border-brand-purple/30 text-[9px] font-mono font-bold uppercase">
+              {adminUser.role || 'Admin'}
+            </span>
           </div>
 
-          {/* Feedback alerts */}
-          {feedback.text && (
-            <div className={`p-4 rounded-lg text-xs flex items-center gap-2.5 ${
-              feedback.type === 'success' ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'
-            }`}>
-              <FiCheckCircle size={16} />
-              <span>{feedback.text}</span>
-            </div>
-          )}
+          {/* Logout Button */}
+          <button
+            type="button"
+            onClick={() => setLogoutModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs font-mono font-medium transition-all shadow-sm"
+          >
+            <FiLogOut size={13} />
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
+        </div>
 
-          {/* Loading panel */}
+      </header>
+
+      {/* Database offline warning notice */}
+      {!dbConnected && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-2.5 flex items-center justify-between text-xs text-amber-300 font-mono">
+          <div className="flex items-center gap-2">
+            <FiAlertCircle className="text-amber-400 shrink-0" />
+            <span>Notice: Backend is currently running without active MySQL connection. Start MySQL and run <code className="bg-black/30 px-1.5 py-0.5 rounded">node server/setupDb.js</code> to enable persistence.</span>
+          </div>
+          <button 
+            onClick={fetchActiveData} 
+            className="underline hover:text-white ml-4 shrink-0"
+          >
+            Retry Connection
+          </button>
+        </div>
+      )}
+
+      {/* Floating Feedback Alert */}
+      {feedback.text && (
+        <div className={`fixed bottom-6 right-6 z-50 p-4 rounded-xl shadow-2xl flex items-center gap-3 text-xs font-mono border backdrop-blur-lg animate-in slide-in-from-bottom-3 ${
+          feedback.type === 'success' 
+            ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/40 shadow-emerald-500/10' 
+            : 'bg-red-950/90 text-red-300 border-red-500/40 shadow-red-500/10'
+        }`}>
+          {feedback.type === 'success' ? <FiCheckCircle size={18} className="shrink-0 text-emerald-400" /> : <FiAlertCircle size={18} className="shrink-0 text-red-400" />}
+          <span>{feedback.text}</span>
+          <button onClick={() => setFeedback({ type: '', text: '' })} className="ml-2 text-gray-400 hover:text-white">
+            <FiX size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        
+        {/* Left Sidebar Navigation */}
+        <aside className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0d1322]/60 p-4 lg:p-6 shrink-0 space-y-6 backdrop-blur-sm">
+          
+          <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest px-2 font-bold">
+            Database Collections
+          </div>
+
+          <nav className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-1.5 pb-2 lg:pb-0">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setSearchQuery('');
+                    setCategoryFilter('ALL');
+                  }}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between whitespace-nowrap transition-all duration-200 group ${
+                    isActive
+                      ? 'bg-gradient-to-r from-brand-blue/20 to-brand-purple/20 text-white border border-brand-blue/40 shadow-md shadow-brand-blue/10'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className={`text-sm ${isActive ? 'text-brand-blue' : 'text-gray-500 group-hover:text-gray-300'}`}>
+                      {tab.icon}
+                    </span>
+                    <span>{tab.label}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {tab.unread > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-black text-[9px] font-mono font-bold animate-pulse">
+                        {tab.unread} new
+                      </span>
+                    )}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                      isActive ? 'bg-white/10 text-white' : 'bg-black/30 text-gray-500'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* System Quick Stats Card */}
+          <div className="hidden lg:block p-4 rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/10 space-y-3">
+            <div className="text-[11px] font-mono text-gray-400 font-bold uppercase flex items-center gap-1.5">
+              <FiActivity className="text-brand-cyan" />
+              <span>System Telemetry</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-center text-xs font-mono">
+              <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                <span className="text-gray-400 text-[10px] block">Live Projects</span>
+                <span className="text-white font-bold text-sm">{projects.length}</span>
+              </div>
+              <div className="p-2 rounded-lg bg-black/30 border border-white/5">
+                <span className="text-gray-400 text-[10px] block">Inquiries</span>
+                <span className="text-brand-cyan font-bold text-sm">{messages.length}</span>
+              </div>
+            </div>
+            <div className="text-[10px] text-gray-500 font-mono text-center">
+              Gemini AI Sessions: <span className="text-white font-semibold">{aiLogs.length}</span>
+            </div>
+          </div>
+
+        </aside>
+
+        {/* Main Work Area */}
+        <main className="flex-1 p-4 sm:p-8 flex flex-col space-y-6 overflow-y-auto max-w-7xl mx-auto w-full">
+          
+          {/* Action Toolbar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 glass-panel border border-white/10 p-4 rounded-2xl bg-[#0d1322]/80">
+            
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <FiSearch className="absolute left-3.5 top-3.5 text-gray-500" size={15} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={`Filter ${activeTab} by keyword...`}
+                className="w-full bg-[#080c14] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-blue/50 focus:ring-1 focus:ring-brand-blue/30 font-sans transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3.5 top-3 text-gray-500 hover:text-white"
+                >
+                  <FiX size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Category Filter Pills (for Projects & Skills) */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {activeTab === 'skills' && (
+                <div className="flex items-center gap-1 bg-[#080c14] p-1 rounded-xl border border-white/10 text-xs font-mono">
+                  <FiFilter size={12} className="text-gray-500 ml-1.5" />
+                  {['ALL', 'FRONTEND', 'BACKEND', 'DATABASE', 'AI'].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setCategoryFilter(cat)}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all ${
+                        categoryFilter === cat ? 'bg-brand-blue text-white' : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {activeTab === 'projects' && (
+                <div className="flex items-center gap-1 bg-[#080c14] p-1 rounded-xl border border-white/10 text-xs font-mono">
+                  {['ALL', 'FEATURED'].map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setCategoryFilter(f)}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all ${
+                        categoryFilter === f ? 'bg-brand-blue text-white' : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Refresh Data Button */}
+              <button
+                type="button"
+                onClick={fetchActiveData}
+                disabled={loading}
+                className="p-2.5 rounded-xl border border-white/10 bg-[#080c14] hover:bg-white/5 text-gray-400 hover:text-white transition-all disabled:opacity-50"
+                title="Refresh collection data"
+              >
+                <FiRefreshCw size={15} className={loading ? 'animate-spin text-brand-blue' : ''} />
+              </button>
+
+              {/* Add New Item Button (for CRUD collections) */}
+              {!['messages', 'ai-logs'].includes(activeTab) && (
+                <button
+                  type="button"
+                  onClick={handleOpenCreate}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-blue to-indigo-600 hover:from-brand-blue/90 hover:to-indigo-500 text-white text-xs font-mono font-semibold transition-all shadow-md shadow-brand-blue/20 hover:scale-[1.02]"
+                >
+                  <FiPlus size={15} />
+                  <span>Add {activeTab.slice(0, -1)}</span>
+                </button>
+              )}
+
+            </div>
+          </div>
+
+          {/* Collection Data Display */}
           {loading ? (
-            <div className="h-48 flex items-center justify-center text-gray-500 font-mono text-xs">
-              <span>Retrieving MySQL records...</span>
+            <div className="py-24 flex flex-col items-center justify-center space-y-4">
+              <div className="w-10 h-10 border-3 border-brand-blue/20 border-t-brand-blue rounded-full animate-spin"></div>
+              <p className="text-xs font-mono text-gray-400">Querying MySQL collection...</p>
+            </div>
+          ) : filteredData.length === 0 ? (
+            <div className="glass-panel border border-white/10 rounded-2xl p-12 text-center space-y-4 bg-[#0d1322]/50">
+              <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 mx-auto">
+                <FiFolder size={24} />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-white">No records found</h3>
+                <p className="text-xs text-gray-400 font-mono">
+                  {searchQuery ? `No results match query "${searchQuery}"` : `The ${activeTab} collection is currently empty.`}
+                </p>
+              </div>
+              {!['messages', 'ai-logs'].includes(activeTab) && (
+                <button
+                  type="button"
+                  onClick={handleOpenCreate}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-blue text-white text-xs font-mono font-semibold shadow-md hover:bg-brand-blue/90 transition-all"
+                >
+                  <FiPlus />
+                  <span>Create First Record</span>
+                </button>
+              )}
             </div>
           ) : (
-            <div className="overflow-x-auto border border-white/5 rounded-xl bg-[#0d1322]/30">
+            <div className="space-y-4">
               
-              {/* Projects CRUD Table */}
+              {/* ===================== TAB: PROJECTS ===================== */}
               {activeTab === 'projects' && (
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#111827]/80 text-gray-400 font-mono border-b border-white/5">
-                    <tr>
-                      <th className="p-4">Title</th>
-                      <th className="p-4">Slug</th>
-                      <th className="p-4">Technologies</th>
-                      <th className="p-4 text-center">Featured</th>
-                      <th className="p-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {projects.length === 0 ? (
-                      <tr><td colSpan={5} className="p-8 text-center text-gray-600 font-mono">No projects found.</td></tr>
-                    ) : projects.map((p) => (
-                      <tr key={p.id} className="hover:bg-white/5 transition-colors">
-                        <td className="p-4 font-semibold text-white">{p.title}</td>
-                        <td className="p-4 text-gray-400 font-mono">{p.slug}</td>
-                        <td className="p-4 text-brand-blue font-mono">{
-                          Array.isArray(p.technologies) ? p.technologies.slice(0,3).join(', ') : p.technologies
-                        }</td>
-                        <td className="p-4 text-center">
-                          {p.featured ? (
-                            <span className="inline-block px-2 py-0.5 bg-brand-blue/10 border border-brand-blue/20 text-brand-blue rounded text-[10px] font-mono">YES</span>
-                          ) : <span className="text-gray-600">-</span>}
-                        </td>
-                        <td className="p-4 text-right space-x-2 shrink-0">
-                          <button onClick={() => handleOpenEdit(p)} className="text-gray-400 hover:text-white p-1.5 rounded bg-white/5"><FiEdit2 size={12} /></button>
-                          <button onClick={() => handleDeleteItem(p.id)} className="text-gray-400 hover:text-red-400 p-1.5 rounded bg-white/5"><FiTrash2 size={12} /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {filteredData.map((project) => (
+                    <div 
+                      key={project.id}
+                      className="glass-panel border border-white/10 rounded-2xl bg-[#0d1322]/90 p-5 flex flex-col justify-between hover:border-brand-blue/40 transition-all group"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="text-sm font-bold text-white group-hover:text-brand-blue transition-colors">
+                            {project.title}
+                          </h4>
+                          {project.featured ? (
+                            <span className="px-2 py-0.5 rounded-full bg-brand-purple/20 text-brand-purple border border-brand-purple/30 text-[9px] font-mono font-bold shrink-0">
+                              Featured
+                            </span>
+                          ) : null}
+                        </div>
 
-              {/* Experience CRUD Table */}
-              {activeTab === 'experience' && (
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#111827]/80 text-gray-400 font-mono border-b border-white/5">
-                    <tr>
-                      <th className="p-4">Company</th>
-                      <th className="p-4">Position</th>
-                      <th className="p-4">Dates</th>
-                      <th className="p-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {experience.length === 0 ? (
-                      <tr><td colSpan={4} className="p-8 text-center text-gray-600 font-mono">No experience found.</td></tr>
-                    ) : experience.map((exp) => (
-                      <tr key={exp.id} className="hover:bg-white/5 transition-colors">
-                        <td className="p-4 font-semibold text-white">{exp.company}</td>
-                        <td className="p-4 text-gray-400">{exp.position}</td>
-                        <td className="p-4 text-brand-purple font-mono">{exp.start_date} — {exp.end_date}</td>
-                        <td className="p-4 text-right space-x-2">
-                          <button onClick={() => handleOpenEdit(exp)} className="text-gray-400 hover:text-white p-1.5 rounded bg-white/5"><FiEdit2 size={12} /></button>
-                          <button onClick={() => handleDeleteItem(exp.id)} className="text-gray-400 hover:text-red-400 p-1.5 rounded bg-white/5"><FiTrash2 size={12} /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                        <p className="text-xs text-gray-400 line-clamp-3 leading-relaxed">
+                          {project.description}
+                        </p>
 
-              {/* Skills CRUD Table */}
-              {activeTab === 'skills' && (
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#111827]/80 text-gray-400 font-mono border-b border-white/5">
-                    <tr>
-                      <th className="p-4">Category</th>
-                      <th className="p-4">Skill Name</th>
-                      <th className="p-4">Practical Description</th>
-                      <th className="p-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {skills.length === 0 ? (
-                      <tr><td colSpan={4} className="p-8 text-center text-gray-600 font-mono">No skills found.</td></tr>
-                    ) : skills.map((skill) => (
-                      <tr key={skill.id} className="hover:bg-white/5 transition-colors">
-                        <td className="p-4 font-mono font-semibold text-brand-purple">{skill.category}</td>
-                        <td className="p-4 text-white font-bold">{skill.name}</td>
-                        <td className="p-4 text-gray-400 max-w-xs truncate">{skill.description}</td>
-                        <td className="p-4 text-right space-x-2">
-                          <button onClick={() => handleOpenEdit(skill)} className="text-gray-400 hover:text-white p-1.5 rounded bg-white/5"><FiEdit2 size={12} /></button>
-                          <button onClick={() => handleDeleteItem(skill.id)} className="text-gray-400 hover:text-red-400 p-1.5 rounded bg-white/5"><FiTrash2 size={12} /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                        {/* Tech tags */}
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {(Array.isArray(project.technologies) ? project.technologies : (project.technologies || '').split(',')).slice(0, 4).map((tech, i) => (
+                            <span key={i} className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-gray-300 font-mono">
+                              {tech.trim()}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
 
-              {/* Certifications CRUD Table */}
-              {activeTab === 'certifications' && (
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#111827]/80 text-gray-400 font-mono border-b border-white/5">
-                    <tr>
-                      <th className="p-4">Title</th>
-                      <th className="p-4">Organization</th>
-                      <th className="p-4">Issue Date</th>
-                      <th className="p-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {certifications.length === 0 ? (
-                      <tr><td colSpan={4} className="p-8 text-center text-gray-600 font-mono">No certifications found.</td></tr>
-                    ) : certifications.map((c) => (
-                      <tr key={c.id} className="hover:bg-white/5 transition-colors">
-                        <td className="p-4 font-semibold text-white">{c.title}</td>
-                        <td className="p-4 text-gray-400">{c.organization}</td>
-                        <td className="p-4 text-brand-blue font-mono">{c.issue_date}</td>
-                        <td className="p-4 text-right space-x-2">
-                          <button onClick={() => handleOpenEdit(c)} className="text-gray-400 hover:text-white p-1.5 rounded bg-white/5"><FiEdit2 size={12} /></button>
-                          <button onClick={() => handleDeleteItem(c.id)} className="text-gray-400 hover:text-red-400 p-1.5 rounded bg-white/5"><FiTrash2 size={12} /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-
-              {/* Achievements CRUD Table */}
-              {activeTab === 'achievements' && (
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#111827]/80 text-gray-400 font-mono border-b border-white/5">
-                    <tr>
-                      <th className="p-4">Title</th>
-                      <th className="p-4">Organization</th>
-                      <th className="p-4">Year</th>
-                      <th className="p-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {achievements.length === 0 ? (
-                      <tr><td colSpan={4} className="p-8 text-center text-gray-600 font-mono">No achievements found.</td></tr>
-                    ) : achievements.map((a) => (
-                      <tr key={a.id} className="hover:bg-white/5 transition-colors">
-                        <td className="p-4 font-semibold text-white">{a.title}</td>
-                        <td className="p-4 text-gray-400">{a.organization}</td>
-                        <td className="p-4 text-brand-blue font-mono">{a.year}</td>
-                        <td className="p-4 text-right space-x-2">
-                          <button onClick={() => handleOpenEdit(a)} className="text-gray-400 hover:text-white p-1.5 rounded bg-white/5"><FiEdit2 size={12} /></button>
-                          <button onClick={() => handleDeleteItem(a.id)} className="text-gray-400 hover:text-red-400 p-1.5 rounded bg-white/5"><FiTrash2 size={12} /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-
-              {/* Messages Listing */}
-              {activeTab === 'messages' && (
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#111827]/80 text-gray-400 font-mono border-b border-white/5">
-                    <tr>
-                      <th className="p-4">Status</th>
-                      <th className="p-4">Sender</th>
-                      <th className="p-4">Subject</th>
-                      <th className="p-4">Message</th>
-                      <th className="p-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 font-sans">
-                    {messages.length === 0 ? (
-                      <tr><td colSpan={5} className="p-8 text-center text-gray-600 font-mono">No contact messages received yet.</td></tr>
-                    ) : messages.map((msg) => (
-                      <tr key={msg.id} className={`hover:bg-white/5 transition-colors ${msg.status === 'unread' ? 'bg-brand-blue/5' : ''}`}>
-                        <td className="p-4">
-                          <button 
-                            onClick={() => handleToggleMessageRead(msg.id, msg.status)}
-                            className={`px-2 py-0.5 rounded text-[9px] font-mono font-semibold uppercase ${
-                              msg.status === 'unread' 
-                                ? 'bg-brand-blue/20 text-brand-blue border border-brand-blue/30' 
-                                : 'bg-white/5 text-gray-500'
-                            }`}
+                      <div className="border-t border-white/5 pt-4 mt-4 flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-gray-500">
+                          Slug: /{project.slug}
+                        </span>
+                        
+                        <div className="flex items-center gap-1.5">
+                          {project.live_url && (
+                            <a
+                              href={project.live_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
+                              title="Live Link"
+                            >
+                              <FiExternalLink size={13} />
+                            </a>
+                          )}
+                          <button
+                            onClick={() => handleOpenEdit(project)}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-brand-blue/20 hover:text-brand-blue text-gray-300 transition-colors"
+                            title="Edit Project"
                           >
-                            {msg.status}
+                            <FiEdit2 size={13} />
                           </button>
-                        </td>
-                        <td className="p-4">
-                          <div className="font-semibold text-white">{msg.name}</div>
-                          <div className="text-[10px] text-gray-500 font-mono mt-0.5">{msg.email}</div>
-                        </td>
-                        <td className="p-4 font-semibold text-gray-300">{msg.subject}</td>
-                        <td className="p-4 text-gray-400 max-w-xs truncate" title={msg.message}>{msg.message}</td>
-                        <td className="p-4 text-right">
-                          <button onClick={() => handleDeleteItem(msg.id)} className="text-gray-500 hover:text-red-400 p-1.5 rounded bg-white/5"><FiTrash2 size={12} /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <button
+                            onClick={() => requestDelete(project.id, project.title)}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-gray-300 transition-colors"
+                            title="Delete Project"
+                          >
+                            <FiTrash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
 
-              {/* AI Logs History */}
+              {/* ===================== TAB: INBOX / MESSAGES ===================== */}
+              {activeTab === 'messages' && (
+                <div className="space-y-3">
+                  {filteredData.map((msg) => (
+                    <div 
+                      key={msg.id}
+                      className={`glass-panel border rounded-2xl p-5 transition-all ${
+                        msg.status === 'unread' 
+                          ? 'border-brand-blue/40 bg-brand-blue/[0.03]' 
+                          : 'border-white/10 bg-[#0d1322]/80'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3 mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-blue to-brand-purple flex items-center justify-center text-white font-bold text-xs">
+                            {msg.name ? msg.name.charAt(0).toUpperCase() : 'M'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-white">{msg.name}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono uppercase font-bold ${
+                                msg.status === 'unread'
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                  : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              }`}>
+                                {msg.status}
+                              </span>
+                            </div>
+                            <a href={`mailto:${msg.email}`} className="text-[11px] font-mono text-brand-cyan hover:underline">
+                              {msg.email}
+                            </a>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono text-gray-500">
+                            {msg.created_at ? new Date(msg.created_at).toLocaleString() : 'Recent'}
+                          </span>
+                          <button
+                            onClick={() => handleToggleMessageRead(msg.id, msg.status)}
+                            className="px-2.5 py-1 rounded-lg text-[10px] font-mono border border-white/10 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
+                          >
+                            Mark {msg.status === 'unread' ? 'Read' : 'Unread'}
+                          </button>
+                          <a
+                            href={`mailto:${msg.email}?subject=Re: ${encodeURIComponent(msg.subject)}`}
+                            className="p-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-brand-blue/20 hover:text-brand-blue text-gray-300 transition-colors"
+                            title="Reply via Email"
+                          >
+                            <FiMail size={13} />
+                          </a>
+                          <button
+                            onClick={() => requestDelete(msg.id, `message from ${msg.name}`)}
+                            className="p-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-gray-300 transition-colors"
+                            title="Delete Message"
+                          >
+                            <FiTrash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <h5 className="text-xs font-bold text-white font-mono">
+                          Subject: {msg.subject}
+                        </h5>
+                        <p className="text-xs text-gray-300 leading-relaxed bg-[#080c14] p-3 rounded-xl border border-white/5">
+                          {msg.message}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ===================== TAB: SKILLS ===================== */}
+              {activeTab === 'skills' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredData.map((skill) => (
+                    <div 
+                      key={skill.id}
+                      className="glass-panel border border-white/10 rounded-2xl bg-[#0d1322]/90 p-4 flex items-center justify-between hover:border-brand-purple/40 transition-all"
+                    >
+                      <div className="space-y-1">
+                        <span className="px-2 py-0.5 rounded bg-brand-purple/10 text-brand-purple border border-brand-purple/20 text-[9px] font-mono font-bold">
+                          {skill.category}
+                        </span>
+                        <h4 className="text-sm font-bold text-white">{skill.name}</h4>
+                        {skill.description && (
+                          <p className="text-[11px] text-gray-400 line-clamp-1">{skill.description}</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleOpenEdit(skill)}
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-brand-blue/20 hover:text-brand-blue text-gray-300 transition-colors"
+                        >
+                          <FiEdit2 size={13} />
+                        </button>
+                        <button
+                          onClick={() => requestDelete(skill.id, skill.name)}
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-gray-300 transition-colors"
+                        >
+                          <FiTrash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ===================== TAB: EXPERIENCE ===================== */}
+              {activeTab === 'experience' && (
+                <div className="space-y-4">
+                  {filteredData.map((exp) => (
+                    <div 
+                      key={exp.id}
+                      className="glass-panel border border-white/10 rounded-2xl bg-[#0d1322]/90 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-white">{exp.position}</h4>
+                          <span className="text-xs text-brand-blue font-semibold">@ {exp.company}</span>
+                        </div>
+                        <p className="text-xs text-gray-400 max-w-2xl leading-relaxed">{exp.description}</p>
+                        <div className="flex items-center gap-3 text-[11px] font-mono text-gray-500 pt-1">
+                          <span className="flex items-center gap-1">
+                            <FiCalendar /> {exp.start_date} - {exp.end_date}
+                          </span>
+                          <span>•</span>
+                          <span>{Array.isArray(exp.technologies) ? exp.technologies.join(', ') : exp.technologies}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 self-end sm:self-center">
+                        <button
+                          onClick={() => handleOpenEdit(exp)}
+                          className="p-2 rounded-lg bg-white/5 hover:bg-brand-blue/20 hover:text-brand-blue text-gray-300 transition-colors"
+                        >
+                          <FiEdit2 size={14} />
+                        </button>
+                        <button
+                          onClick={() => requestDelete(exp.id, `${exp.position} at ${exp.company}`)}
+                          className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-gray-300 transition-colors"
+                        >
+                          <FiTrash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ===================== TAB: CERTIFICATIONS & ACHIEVEMENTS ===================== */}
+              {(activeTab === 'certifications' || activeTab === 'achievements') && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredData.map((item) => (
+                    <div 
+                      key={item.id}
+                      className="glass-panel border border-white/10 rounded-2xl bg-[#0d1322]/90 p-5 flex flex-col justify-between"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="text-sm font-bold text-white">{item.title}</h4>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-gray-300">
+                            {item.issue_date || item.year}
+                          </span>
+                        </div>
+                        <p className="text-xs text-brand-purple font-mono">{item.organization}</p>
+                        {item.description && (
+                          <p className="text-xs text-gray-400 leading-relaxed">{item.description}</p>
+                        )}
+                      </div>
+
+                      <div className="border-t border-white/5 pt-3 mt-4 flex items-center justify-between">
+                        {item.certificate_url ? (
+                          <a
+                            href={item.certificate_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[11px] font-mono text-brand-cyan hover:underline flex items-center gap-1"
+                          >
+                            <span>Verify Credential</span>
+                            <FiExternalLink size={11} />
+                          </a>
+                        ) : <span />}
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenEdit(item)}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-brand-blue/20 hover:text-brand-blue text-gray-300 transition-colors"
+                          >
+                            <FiEdit2 size={13} />
+                          </button>
+                          <button
+                            onClick={() => requestDelete(item.id, item.title)}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-gray-300 transition-colors"
+                          >
+                            <FiTrash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ===================== TAB: AI AUDIT LOGS ===================== */}
               {activeTab === 'ai-logs' && (
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#111827]/80 text-gray-400 font-mono border-b border-white/5">
-                    <tr>
-                      <th className="p-4">Session</th>
-                      <th className="p-4">Question</th>
-                      <th className="p-4">AI Answer</th>
-                      <th className="p-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {aiLogs.length === 0 ? (
-                      <tr><td colSpan={4} className="p-8 text-center text-gray-600 font-mono">No conversation logs yet.</td></tr>
-                    ) : aiLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-white/5 transition-colors">
-                        <td className="p-4 text-[10px] font-mono text-brand-cyan truncate max-w-[100px]" title={log.session_id}>
-                          {log.session_id.substring(0, 10)}...
-                        </td>
-                        <td className="p-4 font-semibold text-gray-300 max-w-xs truncate" title={log.question}>{log.question}</td>
-                        <td className="p-4 text-gray-400 max-w-xs truncate" title={log.answer}>{log.answer}</td>
-                        <td className="p-4 text-right">
-                          <button onClick={() => handleDeleteItem(log.id)} className="text-gray-500 hover:text-red-400 p-1.5 rounded bg-white/5"><FiTrash2 size={12} /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="space-y-3">
+                  {filteredData.map((log) => (
+                    <div 
+                      key={log.id}
+                      className="glass-panel border border-white/10 rounded-2xl bg-[#0d1322]/90 p-5 space-y-3"
+                    >
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <FiCpu className="text-brand-cyan" />
+                          <span className="text-[10px] font-mono text-gray-400">
+                            Session: <span className="text-white">{log.session_id ? log.session_id.slice(0, 16) : 'Anonymous'}</span>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono text-gray-500">
+                            {log.created_at ? new Date(log.created_at).toLocaleString() : 'Recent'}
+                          </span>
+                          <button
+                            onClick={() => requestDelete(log.id, 'this AI conversation log')}
+                            className="p-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-gray-300 transition-colors"
+                            title="Delete Log"
+                          >
+                            <FiTrash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="bg-[#080c14] p-3 rounded-xl border border-white/5 text-xs text-white flex items-start gap-2">
+                          <span className="text-brand-blue font-bold font-mono shrink-0">User:</span>
+                          <span>{log.question}</span>
+                        </div>
+                        <div className="bg-brand-purple/[0.04] p-3 rounded-xl border border-brand-purple/15 text-xs text-gray-200 flex items-start gap-2">
+                          <span className="text-brand-purple font-bold font-mono shrink-0">Chunchun AI:</span>
+                          <span className="leading-relaxed">{log.answer}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
 
             </div>
@@ -581,211 +1015,478 @@ const AdminDashboard = () => {
         </main>
       </div>
 
-      {/* CRUD Creation / Editing Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-[#0b0f19] border border-white/10 p-6 sm:p-8 rounded-2xl flex flex-col max-h-[90vh] overflow-y-auto shadow-2xl relative">
+      {/* ===================== MODAL: CREATE / EDIT RECORD ===================== */}
+      {showFormModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-xl glass-panel border border-white/15 rounded-2xl bg-[#0d1322] shadow-2xl p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
             
-            <button 
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white bg-white/5 p-2 rounded-full z-10"
-            >
-              <FiX size={18} />
-            </button>
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-white font-display">
+                  {editItem ? `Edit ${activeTab.slice(0, -1)}` : `Create New ${activeTab.slice(0, -1)}`}
+                </h3>
+                <p className="text-xs text-gray-400 font-mono">Collection: chunchun_portfolio.{activeTab}</p>
+              </div>
+              <button
+                onClick={() => setShowFormModal(false)}
+                className="text-gray-400 hover:text-white p-1 rounded-lg"
+              >
+                <FiX size={18} />
+              </button>
+            </div>
 
-            <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4 font-display">
-              {editItem ? 'Modify Database Entry' : 'Add New Database Entry'}
-            </h3>
-
-            <form onSubmit={handleFormSubmit} className="space-y-4 font-sans text-xs">
+            <form onSubmit={handleFormSubmit} className="space-y-4">
               
-              {/* Form elements mapped to tabs */}
+              {/* Form Fields: Projects */}
               {activeTab === 'projects' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Project Title</label>
-                      <input type="text" name="title" required value={formData.title || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white" />
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Project Title</label>
+                    <input
+                      type="text"
+                      name="title"
+                      required
+                      value={formData.title || ''}
+                      onChange={handleFormChange}
+                      placeholder="e.g. AI-Powered E-Commerce Platform"
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">URL Slug (Unique Identifier)</label>
+                    <input
+                      type="text"
+                      name="slug"
+                      required
+                      value={formData.slug || ''}
+                      onChange={handleFormChange}
+                      placeholder="ai-powered-ecommerce-platform"
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-brand-blue/50"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Description</label>
+                    <textarea
+                      name="description"
+                      rows={3}
+                      required
+                      value={formData.description || ''}
+                      onChange={handleFormChange}
+                      placeholder="Executive summary of architecture and impact..."
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Technologies (Comma-separated)</label>
+                    <input
+                      type="text"
+                      name="technologies"
+                      required
+                      value={formData.technologies || ''}
+                      onChange={handleFormChange}
+                      placeholder="React, Node.js, Express, MySQL, Tailwind CSS, Gemini AI"
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-brand-blue/50"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Key Features (One feature per line)</label>
+                    <textarea
+                      name="features"
+                      rows={3}
+                      required
+                      value={formData.features || ''}
+                      onChange={handleFormChange}
+                      placeholder="JWT secure authentication&#10;Gemini AI chat shopping assistant&#10;Payment mock checkout pipeline"
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-brand-blue/50"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">GitHub Repository URL</label>
+                      <input
+                        type="url"
+                        name="github_url"
+                        value={formData.github_url || ''}
+                        onChange={handleFormChange}
+                        placeholder="https://github.com/..."
+                        className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                      />
                     </div>
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Project Slug (Auto generated)</label>
-                      <input type="text" name="slug" required value={formData.slug || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white font-mono" />
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Live Demo URL</label>
+                      <input
+                        type="url"
+                        name="live_url"
+                        value={formData.live_url || ''}
+                        onChange={handleFormChange}
+                        placeholder="https://..."
+                        className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                      />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="font-mono text-[10px] text-gray-400 block mb-1">Description Narrative</label>
-                    <textarea name="description" required rows={3} value={formData.description || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white" />
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="featured"
+                      name="featured"
+                      checked={Boolean(formData.featured)}
+                      onChange={handleFormChange}
+                      className="w-4 h-4 rounded border-white/20 bg-[#080c14] text-brand-blue focus:ring-0"
+                    />
+                    <label htmlFor="featured" className="text-xs text-gray-300 font-mono">
+                      Pin as Featured Project on homepage showcase
+                    </label>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">GitHub Repository URL</label>
-                      <input type="url" name="github_url" value={formData.github_url || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white font-mono" />
-                    </div>
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Live Demo Deployment URL</label>
-                      <input type="url" name="live_url" value={formData.live_url || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white font-mono" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="font-mono text-[10px] text-gray-400 block mb-1">Technologies utilized (Comma-separated: React, Node)</label>
-                    <input type="text" name="technologies" required value={formData.technologies || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white font-mono" />
-                  </div>
-
-                  <div>
-                    <label className="font-mono text-[10px] text-gray-400 block mb-1">Key Features (JSON format list or raw text description)</label>
-                    <textarea name="features" required rows={4} value={formData.features || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-emerald-400 font-mono leading-normal" placeholder='[\n  "Feature element 1",\n  "Feature element 2"\n]' />
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" name="featured" id="featured" checked={formData.featured || false} onChange={handleFormChange} className="w-4 h-4 rounded text-brand-blue" />
-                    <label htmlFor="featured" className="font-mono text-[10px] text-gray-300">Highlight as Flagship Project</label>
-                  </div>
-                </div>
+                </>
               )}
 
+              {/* Form Fields: Experience */}
               {activeTab === 'experience' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Company / Organization</label>
-                      <input type="text" name="company" required value={formData.company || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white" />
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Company Name</label>
+                      <input
+                        type="text"
+                        name="company"
+                        required
+                        value={formData.company || ''}
+                        onChange={handleFormChange}
+                        placeholder="e.g. Blagweb Software Solution"
+                        className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                      />
                     </div>
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Job Position</label>
-                      <input type="text" name="position" required value={formData.position || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white" />
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Role / Position</label>
+                      <input
+                        type="text"
+                        name="position"
+                        required
+                        value={formData.position || ''}
+                        onChange={handleFormChange}
+                        placeholder="e.g. Web Developer Intern"
+                        className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                      />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Start Date (e.g. Dec 2024)</label>
-                      <input type="text" name="start_date" required value={formData.start_date || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white font-mono" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Start Date</label>
+                      <input
+                        type="text"
+                        name="start_date"
+                        required
+                        value={formData.start_date || ''}
+                        onChange={handleFormChange}
+                        placeholder="Dec 2024"
+                        className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-brand-blue/50"
+                      />
                     </div>
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">End Date (e.g. Jan 2025 / Present)</label>
-                      <input type="text" name="end_date" required value={formData.end_date || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white font-mono" />
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">End Date</label>
+                      <input
+                        type="text"
+                        name="end_date"
+                        required
+                        value={formData.end_date || ''}
+                        onChange={handleFormChange}
+                        placeholder="Jan 2025 (or Present)"
+                        className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-brand-blue/50"
+                      />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="font-mono text-[10px] text-gray-400 block mb-1">Work Description Summary</label>
-                    <textarea name="description" required rows={4} value={formData.description || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white" />
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Key Contributions & Description</label>
+                    <textarea
+                      name="description"
+                      rows={3}
+                      required
+                      value={formData.description || ''}
+                      onChange={handleFormChange}
+                      placeholder="Key achievements, architecture work, and delivery impact..."
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                    />
                   </div>
 
-                  <div>
-                    <label className="font-mono text-[10px] text-gray-400 block mb-1">Technologies Used (Comma-separated)</label>
-                    <input type="text" name="technologies" required value={formData.technologies || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white font-mono" />
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Technologies (Comma-separated)</label>
+                    <input
+                      type="text"
+                      name="technologies"
+                      required
+                      value={formData.technologies || ''}
+                      onChange={handleFormChange}
+                      placeholder="React, Node.js, Express, MySQL"
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-brand-blue/50"
+                    />
                   </div>
-                </div>
+                </>
               )}
 
+              {/* Form Fields: Skills */}
               {activeTab === 'skills' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Skill Category</label>
-                      <select name="category" required value={formData.category || 'FRONTEND'} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white font-mono focus:outline-none">
-                        <option value="FRONTEND">FRONTEND</option>
-                        <option value="BACKEND">BACKEND</option>
-                        <option value="DATABASE">DATABASE</option>
-                        <option value="PROGRAMMING">PROGRAMMING</option>
-                        <option value="CORE CS">CORE CS</option>
-                        <option value="AI">AI</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Skill Name</label>
-                      <input type="text" name="name" required value={formData.name || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white font-bold" />
-                    </div>
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Skill Category</label>
+                    <select
+                      name="category"
+                      value={formData.category || 'FRONTEND'}
+                      onChange={handleFormChange}
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                    >
+                      <option value="FRONTEND">FRONTEND</option>
+                      <option value="BACKEND">BACKEND</option>
+                      <option value="DATABASE">DATABASE</option>
+                      <option value="PROGRAMMING">PROGRAMMING</option>
+                      <option value="CORE CS">CORE CS</option>
+                      <option value="AI">AI</option>
+                    </select>
                   </div>
 
-                  <div>
-                    <label className="font-mono text-[10px] text-gray-400 block mb-1">Practical Usage / Projects Used In</label>
-                    <input type="text" name="description" value={formData.description || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white" placeholder="E.g. Used in AI Hospital dashboard catalog..." />
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Skill Name</label>
+                    <input
+                      type="text"
+                      name="name"
+                      required
+                      value={formData.name || ''}
+                      onChange={handleFormChange}
+                      placeholder="e.g. React.js, Node.js, MySQL"
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                    />
                   </div>
-                </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Practical Use Context (Optional)</label>
+                    <input
+                      type="text"
+                      name="description"
+                      value={formData.description || ''}
+                      onChange={handleFormChange}
+                      placeholder="e.g. Built full-stack e-commerce authentication with JWT"
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                    />
+                  </div>
+                </>
               )}
 
+              {/* Form Fields: Certifications */}
               {activeTab === 'certifications' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Certification Title</label>
-                      <input type="text" name="title" required value={formData.title || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white" />
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Certificate Title</label>
+                    <input
+                      type="text"
+                      name="title"
+                      required
+                      value={formData.title || ''}
+                      onChange={handleFormChange}
+                      placeholder="e.g. MERN Stack Web Development"
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Issuing Organization</label>
+                      <input
+                        type="text"
+                        name="organization"
+                        required
+                        value={formData.organization || ''}
+                        onChange={handleFormChange}
+                        placeholder="Edunet Foundation"
+                        className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                      />
                     </div>
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Issuing Organization</label>
-                      <input type="text" name="organization" required value={formData.organization || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white" />
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Issue Date</label>
+                      <input
+                        type="text"
+                        name="issue_date"
+                        required
+                        value={formData.issue_date || ''}
+                        onChange={handleFormChange}
+                        placeholder="Feb 2025"
+                        className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-brand-blue/50"
+                      />
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Issue Date (e.g. October 2024)</label>
-                      <input type="text" name="issue_date" required value={formData.issue_date || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white font-mono" />
-                    </div>
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Certificate Credential Link</label>
-                      <input type="url" name="certificate_url" value={formData.certificate_url || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white font-mono" />
-                    </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Credential URL</label>
+                    <input
+                      type="url"
+                      name="certificate_url"
+                      value={formData.certificate_url || ''}
+                      onChange={handleFormChange}
+                      placeholder="https://..."
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-brand-blue/50"
+                    />
                   </div>
-
-                  <div>
-                    <label className="font-mono text-[10px] text-gray-400 block mb-1">Additional description</label>
-                    <input type="text" name="description" value={formData.description || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white" />
-                  </div>
-                </div>
+                </>
               )}
 
+              {/* Form Fields: Achievements */}
               {activeTab === 'achievements' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Award Title</label>
-                      <input type="text" name="title" required value={formData.title || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white" />
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Achievement / Award Title</label>
+                    <input
+                      type="text"
+                      name="title"
+                      required
+                      value={formData.title || ''}
+                      onChange={handleFormChange}
+                      placeholder="Winner - College Ideation Challenge"
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Organization</label>
+                      <input
+                        type="text"
+                        name="organization"
+                        required
+                        value={formData.organization || ''}
+                        onChange={handleFormChange}
+                        placeholder="Anna University Campus"
+                        className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                      />
                     </div>
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Awarding Organization</label>
-                      <input type="text" name="organization" required value={formData.organization || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white" />
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Year</label>
+                      <input
+                        type="text"
+                        name="year"
+                        required
+                        value={formData.year || ''}
+                        onChange={handleFormChange}
+                        placeholder="2024"
+                        className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-brand-blue/50"
+                      />
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Year</label>
-                      <input type="text" name="year" required value={formData.year || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white font-mono" />
-                    </div>
-                    <div>
-                      <label className="font-mono text-[10px] text-gray-400 block mb-1">Short Description</label>
-                      <input type="text" name="description" required value={formData.description || ''} onChange={handleFormChange} className="w-full bg-[#080c14] border border-white/10 rounded-lg p-2.5 text-white" />
-                    </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase">Description</label>
+                    <textarea
+                      name="description"
+                      rows={3}
+                      required
+                      value={formData.description || ''}
+                      onChange={handleFormChange}
+                      placeholder="Summary of accomplishment and project innovation..."
+                      className="w-full bg-[#080c14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-blue/50"
+                    />
                   </div>
-                </div>
+                </>
               )}
 
-              {/* Submit / Cancel Actions buttons */}
-              <div className="mt-8 pt-4 border-t border-white/5 flex items-center justify-end gap-3">
+              {/* Modal Action Buttons */}
+              <div className="pt-4 border-t border-white/10 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white rounded-lg transition-colors"
+                  onClick={() => setShowFormModal(false)}
+                  disabled={actionLoading}
+                  className="px-4 py-2.5 rounded-xl border border-white/10 text-xs font-mono text-gray-400 hover:text-white hover:bg-white/5 transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 bg-brand-blue hover:bg-brand-blue/95 disabled:bg-white/5 disabled:text-gray-500 rounded-lg text-white font-bold transition-all shadow-md focus:outline-none"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-blue to-indigo-600 hover:from-brand-blue/90 hover:to-indigo-500 text-xs font-mono font-semibold text-white transition-all shadow-md shadow-brand-blue/20 flex items-center gap-2"
                 >
-                  <FiCheck />
-                  <span>{actionLoading ? 'Saving...' : 'Save Record'}</span>
+                  {actionLoading ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                      <span>Saving to MySQL...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiCheck size={14} />
+                      <span>{editItem ? 'Save Updates' : 'Create Record'}</span>
+                    </>
+                  )}
                 </button>
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== MODAL: DELETE CONFIRMATION ===================== */}
+      {deleteModal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-md glass-panel border border-red-500/30 rounded-2xl bg-[#0d1322] shadow-2xl p-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-center justify-center text-red-400 mx-auto">
+              <FiAlertCircle size={24} />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-white font-display">Confirm Deletion</h3>
+              <p className="text-xs text-gray-400 leading-relaxed font-sans">
+                Are you sure you want to permanently delete <strong className="text-white font-mono">"{deleteModal.title}"</strong> from the database? This action cannot be undone.
+              </p>
+            </div>
+            <div className="pt-2 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteModal({ show: false, id: null, title: '' })}
+                disabled={actionLoading}
+                className="px-4 py-2 rounded-xl border border-white/10 text-xs font-mono text-gray-400 hover:text-white transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={actionLoading}
+                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-mono font-semibold text-white transition-all shadow-md shadow-red-500/20 flex items-center gap-2"
+              >
+                {actionLoading ? 'Deleting...' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== MODAL: LOGOUT CONFIRMATION ===================== */}
+      {logoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-md glass-panel border border-white/15 rounded-2xl bg-[#0d1322] shadow-2xl p-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-brand-blue/10 border border-brand-blue/25 flex items-center justify-center text-brand-blue mx-auto">
+              <FiLogOut size={22} />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-white font-display">Sign Out of Command Center</h3>
+              <p className="text-xs text-gray-400 leading-relaxed font-sans">
+                Are you sure you want to end your administrative session? You will need your login credentials to access the management portal again.
+              </p>
+            </div>
+            <div className="pt-2 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setLogoutModal(false)}
+                className="px-4 py-2 rounded-xl border border-white/10 text-xs font-mono text-gray-400 hover:text-white transition-all"
+              >
+                Stay Signed In
+              </button>
+              <button
+                type="button"
+                onClick={executeLogout}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-xs font-mono font-semibold text-white transition-all shadow-md shadow-red-500/20"
+              >
+                Confirm Sign Out
+              </button>
+            </div>
           </div>
         </div>
       )}

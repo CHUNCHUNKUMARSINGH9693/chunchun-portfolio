@@ -10,11 +10,18 @@ const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'nCVPBgIsobrLMnnLg
 
 const Contact = () => {
   const formRef = useRef(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: ''
+  const [formData, setFormData] = useState(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('currentUser'));
+      return {
+        name: user?.name || '',
+        email: user?.email || '',
+        subject: '',
+        message: ''
+      };
+    } catch {
+      return { name: '', email: '', subject: '', message: '' };
+    }
   });
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null); // 'success', 'error'

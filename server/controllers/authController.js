@@ -4,26 +4,44 @@ const { pool } = require('../config/db');
 require('dotenv').config();
 
 /**
- * Helper to ensure at least one admin user exists
+ * Helper to ensure the primary administrator exists with updated credentials
  */
 async function ensureAdminExists() {
+  const adminEmail = 'Chunchun@gmail.com';
+  const adminPassword = 'Chunchun@12';
+
   try {
-    const [rows] = await pool.query('SELECT COUNT(*) as count FROM users');
-    if (rows[0].count === 0) {
-      const defaultEmail = 'admin@chunchun.dev';
-      const defaultPassword = 'admin123'; // Default secure password
-      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-      
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+    // Check if an admin with Chunchun@gmail.com exists
+    const [rows] = await pool.query('SELECT id FROM users WHERE LOWER(email) = LOWER(?)', [adminEmail]);
+
+    if (rows.length === 0) {
+      // Check if any old admin exists (e.g. admin@chunchun.dev) to update, or insert new
+      const [allAdmins] = await pool.query('SELECT id FROM users WHERE role = "admin"');
+      if (allAdmins.length > 0) {
+        await pool.query(
+          'UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?',
+          ['Chunchun Kumar Singh', adminEmail, hashedPassword, allAdmins[0].id]
+        );
+        console.log(`Administrator account credentials updated to: ${adminEmail}`);
+      } else {
+        await pool.query(
+          'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+          ['Chunchun Kumar Singh', adminEmail, hashedPassword, 'admin']
+        );
+        console.log(`Administrator account created successfully:`);
+        console.log(`- Email: ${adminEmail}`);
+      }
+    } else {
+      // Ensure password hash matches current Chunchun@12
       await pool.query(
-        'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
-        ['Chunchun Kumar Singh', defaultEmail, hashedPassword, 'admin']
+        'UPDATE users SET password = ?, role = "admin" WHERE LOWER(email) = LOWER(?)',
+        [hashedPassword, adminEmail]
       );
-      console.log('Default administrator created successfully:');
-      console.log(`- Email: ${defaultEmail}`);
-      console.log(`- Password: ${defaultPassword}`);
     }
   } catch (error) {
-    console.error('Error seeding default admin:', error.message);
+    console.error('Error synchronizing administrator credentials:', error.message);
   }
 }
 
@@ -35,11 +53,11 @@ const login = async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
-    // Ensure admin user exists
+    // Ensure admin user exists & credentials are up-to-date
     await ensureAdminExists();
 
-    // Query user by email
-    const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    // Query user by email (case-insensitive)
+    const [rows] = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER(?)', [email.trim()]);
     if (rows.length === 0) {
       return res.status(401).json({
         success: false,

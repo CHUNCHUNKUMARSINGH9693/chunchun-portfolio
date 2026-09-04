@@ -28,7 +28,6 @@ const Navbar = () => {
 
       // Check which section is in view
       const scrollPosition = window.scrollY + 150;
-      
       for (const item of navItems) {
         const element = document.getElementById(item.id);
         if (element) {
@@ -36,6 +35,7 @@ const Navbar = () => {
           const height = element.offsetHeight;
           if (scrollPosition >= top && scrollPosition < top + height) {
             setActiveSection(item.id);
+            break;
           }
         }
       }
@@ -50,52 +50,55 @@ const Navbar = () => {
     setMobileMenuOpen(false);
     const element = document.getElementById(id);
     if (element) {
-      const offset = 80; // height of navbar
-      const bodyRect = document.body.getBoundingClientRect().top;
-      const elementRect = element.getBoundingClientRect().top;
-      const elementPosition = elementRect - bodyRect;
-      const offsetPosition = elementPosition - offset;
-
       window.scrollTo({
-        top: offsetPosition,
+        top: element.offsetTop - 80,
         behavior: 'smooth'
       });
     }
   };
 
   return (
-    <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
-      scrolled 
-        ? 'glass-panel py-3 border-b border-white/5 shadow-lg' 
-        : 'bg-transparent py-5 border-b border-transparent'
-    }`}>
+    <nav
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? 'bg-[#0b0f19]/80 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/20'
+          : 'bg-transparent'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          {/* Logo */}
-          <a 
-            href="#home" 
-            onClick={(e) => handleNavClick(e, 'home')}
-            className="flex items-center space-x-2 group focus:outline-none"
-          >
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-brand-blue to-brand-purple flex items-center justify-center font-display font-extrabold text-white text-lg shadow-md group-hover:scale-105 transition-transform duration-300">
-              CK
-            </div>
-            <div className="flex flex-col">
-              <span className="font-display font-bold text-white text-base tracking-wide leading-none">Chunchun Singh</span>
-              <span className="text-[10px] text-gray-400 font-mono mt-1">@chunchun_dev</span>
-            </div>
-          </a>
+        <div className="flex items-center justify-between h-20">
+          
+          {/* Logo / Brand Name */}
+          <div className="flex-shrink-0">
+            <a 
+              href="#home" 
+              onClick={(e) => handleNavClick(e, 'home')}
+              className="flex items-center gap-2 group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-blue to-brand-purple flex items-center justify-center font-display font-bold text-white shadow-md shadow-brand-blue/20 group-hover:scale-105 transition-transform duration-300">
+                CKS
+              </div>
+              <div className="flex flex-col">
+                <span className="font-display font-bold text-white text-lg tracking-tight group-hover:text-brand-cyan transition-colors">
+                  Chunchun Kr Singh
+                </span>
+                <span className="text-[10px] font-mono text-gray-400 tracking-wider">
+                  Full-Stack Developer
+                </span>
+              </div>
+            </a>
+          </div>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Nav Items */}
           <div className="hidden lg:flex items-center space-x-1">
             {navItems.map((item) => (
               <a
                 key={item.id}
                 href={`#${item.id}`}
                 onClick={(e) => handleNavClick(e, item.id)}
-                className={`px-3 py-2 rounded-md text-sm font-medium tracking-wide transition-colors duration-200 ${
+                className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   activeSection === item.id
-                    ? 'text-brand-blue bg-brand-blue/10 border border-brand-blue/20'
+                    ? 'text-brand-blue bg-brand-blue/10 border border-brand-blue/20 shadow-sm'
                     : 'text-gray-300 hover:text-white hover:bg-white/5'
                 }`}
               >

@@ -1,5 +1,6 @@
 import React from 'react';
-import { FiGithub, FiLinkedin, FiMail, FiMessageSquare, FiCpu } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
+import { FiGithub, FiLinkedin, FiMail, FiMessageSquare, FiCpu, FiLock, FiTerminal } from 'react-icons/fi';
 
 const Footer = () => {
   const scrollToSection = (e, id) => {
@@ -59,6 +60,18 @@ const Footer = () => {
               <li><a href="#ai-lab" onClick={(e) => scrollToSection(e, 'ai-lab')} className="hover:text-white transition-colors font-semibold text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan to-brand-purple">AI Lab</a></li>
               <li><a href="#skills" onClick={(e) => scrollToSection(e, 'skills')} className="hover:text-white transition-colors">Skills</a></li>
               <li><a href="#contact" onClick={(e) => scrollToSection(e, 'contact')} className="hover:text-white transition-colors">Contact</a></li>
+              <li className="pt-2 border-t border-white/5">
+                <Link to="/playground" className="hover:text-brand-blue transition-colors flex items-center gap-1.5 text-xs text-gray-400">
+                  <FiTerminal size={13} className="text-brand-cyan" />
+                  <span>API Playground</span>
+                </Link>
+              </li>
+              <li>
+                <Link to="/admin/login" className="hover:text-brand-purple transition-colors flex items-center gap-1.5 text-xs text-gray-400">
+                  <FiLock size={13} className="text-brand-purple" />
+                  <span>Admin Portal</span>
+                </Link>
+              </li>
             </ul>
           </div>
 

@@ -100,6 +100,11 @@ CREATE TABLE IF NOT EXISTS ai_conversations (
 -- SEED DATA
 -- ==================================================
 
+-- Seed Default Admin User (Email: Chunchun@gmail.com / Password: Chunchun@12)
+INSERT INTO users (name, email, password, role) VALUES
+('Chunchun Kumar Singh', 'Chunchun@gmail.com', '$2a$10$aOuKGcRBV6iTAZQnUsbEEuEFbIAbJTIZYOY/0j1YjHSXOYEUr4JRm', 'admin')
+ON DUPLICATE KEY UPDATE password = VALUES(password);
+
 -- Seed Skills
 INSERT INTO skills (category, name, description) VALUES
 ('FRONTEND', 'React.js', 'Used as the core library in Flagship AI-Powered E-Commerce, Hospital Management, and Food Discovery platforms.'),

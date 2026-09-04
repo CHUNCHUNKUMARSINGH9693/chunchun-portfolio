@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import APITester from './pages/APITester';
 import AdminLogin from './pages/AdminLogin';
@@ -42,7 +42,13 @@ function App() {
         <Route path="/playground" element={<APITester />} />
 
         {/* Administration routes */}
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/register" element={<Navigate to="/admin/login" replace />} />
+        <Route path="/login" element={<Navigate to="/admin/login" replace />} />
+        <Route path="/register" element={<Navigate to="/admin/login" replace />} />
+
+
         <Route 
           path="/admin/dashboard" 
           element={
