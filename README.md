@@ -487,7 +487,6 @@ This utility verifies:
 **Chunchun Kumar Singh**
 - **Degree**: B.E. Computer Science & Engineering, Anna University
 - **Specialization**: MERN Stack & AI-Powered Web Applications
-- **Email**: [chunchunkumarsingh.cse2021@dscet.ac.in](mailto:chunchunkumarsingh.cse2021@dscet.ac.in)
 - **LinkedIn**: [linkedin.com/in/chunchun-kumar-singh](https://linkedin.com)
 - **GitHub**: [github.com/CHUNCHUNKUMARSINGH9693](https://github.com/CHUNCHUNKUMARSINGH9693)
 - **Portfolio**: https://chunchun-portfolio-zeta.vercel.app/
