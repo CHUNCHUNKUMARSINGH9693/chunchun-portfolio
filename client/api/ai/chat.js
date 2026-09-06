@@ -1,5 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
 // Structured Portfolio Context for AI
 const PORTFOLIO_CONTEXT = `
 You are Chunchun AI, a professional virtual assistant representing Chunchun Kumar Singh.
@@ -65,6 +63,7 @@ export default async function handler(req, res) {
 
   if (apiKey) {
     try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       const prompt = `${PORTFOLIO_CONTEXT}\n\nUser Question: ${message}\nAI Response:`;
@@ -76,7 +75,7 @@ export default async function handler(req, res) {
         answer
       });
     } catch (err) {
-      console.warn('Gemini API error in Vercel function, using simulation fallback:', err.message);
+      console.warn('Gemini API call skipped, using structured portfolio simulation:', err.message);
     }
   }
 
@@ -92,34 +91,37 @@ export default async function handler(req, res) {
 function generateFallbackAnswer(query) {
   const q = (query || '').toLowerCase();
   if (q.includes('strongest') || q.includes('flagship') || q.includes('best project')) {
-    return "Chunchun's strongest flagship project is the AI-Powered E-Commerce Platform. Built with React, Node.js, Express, MongoDB, Tailwind CSS, and Gemini AI, it features full user authentication, dynamic catalog filters, checkout flows, and a real-time AI Shopping Assistant.";
+    return "Chunchun's strongest flagship project is the **AI-Powered E-Commerce Platform**.\n\n• **Stack**: React.js, Node.js, Express.js, MongoDB, Tailwind CSS, JWT, and Gemini AI.\n• **Features**: User authentication, dynamic inventory filters, persistent cart state, checkout flows, and a server-side Gemini AI Shopping Assistant chatbot.\n• **GitHub**: https://github.com/CHUNCHUNKUMARSINGH9693/ecommerce";
   }
   if (q.includes('ecommerce') || q.includes('shopping')) {
-    return "The AI-Powered E-Commerce Platform is Chunchun's flagship project, featuring React, Tailwind CSS, Express, and MongoDB. It includes secure JWT authentication, inventory filtering, order checkout, and an interactive Gemini AI Shopping Assistant.";
+    return "The **AI-Powered E-Commerce Platform** is Chunchun's flagship project, featuring React, Tailwind CSS, Express, and MongoDB. It includes secure JWT authentication, inventory filtering, order checkout, and an interactive Gemini AI Shopping Assistant.\n\n• Live Demo: https://my-portfolio-chunchun.vercel.app\n• GitHub: https://github.com/CHUNCHUNKUMARSINGH9693/ecommerce";
   }
   if (q.includes('hospital') || q.includes('patient') || q.includes('doctor')) {
-    return "Chunchun built the AI-Assisted Hospital Management System using React, Axios, Express, MongoDB, and Gemini AI. It provides role-based access for patient registrations, doctor duty schedules, appointment bookings, and an AI navigation assistant (non-diagnostic).";
+    return "Chunchun built the **AI-Assisted Hospital Management System** using React, Axios, Express, MongoDB, and Gemini AI. It provides role-based access for patient registrations, doctor duty schedules, appointment bookings, and an AI navigation assistant (non-diagnostic).\n\n• GitHub: https://github.com/CHUNCHUNKUMARSINGH9693/E-Hospital-Management-System";
   }
-  if (q.includes('food') || q.includes('zomato') || q.includes('restaurant')) {
-    return "Chunchun developed a Food Discovery & Ordering Platform (Zomato Clone) using React, Express, MongoDB, and Tailwind CSS, featuring restaurant catalogs, menu filters, cart state persistence, and mock checkout.";
+  if (q.includes('food') || q.includes('zomato') || q.includes('restaurant') || q.includes('ordering')) {
+    return "Chunchun developed a **Food Discovery & Ordering Platform (Zomato Clone)** using React, Express, MongoDB, and Tailwind CSS, featuring restaurant catalogs, menu filters, cart state persistence, and mock checkout.\n\n• Live Demo: https://zomoto-clone-weld.vercel.app/\n• GitHub: https://github.com/CHUNCHUNKUMARSINGH9693/Edunet-Zomoto-Clone";
   }
   if (q.includes('react') || q.includes('frontend')) {
-    return "Chunchun is skilled in React.js (Vite), JavaScript (ES6+), and Tailwind CSS. He specializes in responsive layouts, custom hooks, Axios HTTP interceptors, Framer Motion animations, and modern UI design systems.";
+    return "Chunchun has extensive hands-on experience with **React.js** (Vite, React 19/18), modern JavaScript (ES6+), and Tailwind CSS. He specializes in responsive layouts, custom hooks, Axios HTTP interceptors, Framer Motion animations, and clean UI architecture.";
   }
   if (q.includes('backend') || q.includes('node') || q.includes('express')) {
-    return "Chunchun's backend stack consists of Node.js and Express.js REST APIs with JWT authentication, bcrypt password hashing, express-rate-limit security, and connection pooling for MySQL and MongoDB.";
+    return "Chunchun's backend architecture is powered by **Node.js** and **Express.js** REST APIs with JWT token authentication, bcrypt password hashing, input sanitization, and connection pooling for MySQL and MongoDB.";
   }
   if (q.includes('database') || q.includes('mysql') || q.includes('mongodb')) {
-    return "Chunchun works with both MySQL (relational schemas, transactions, indexing, SQL queries) and MongoDB (document collections, Mongoose ODM).";
+    return "Chunchun works with both **MySQL** (relational schemas, transactions, indexing, normalization) and **MongoDB** (document collections, Mongoose ODM).";
   }
   if (q.includes('experience') || q.includes('internship') || q.includes('job')) {
-    return "Chunchun has completed two internships:\n1. Web Developer Intern at Blagweb Software Solution (Dec 2024 - Jan 2025)\n2. MERN Stack Web Development Intern at Edunet Foundation (Jun 2024 - Jul 2024).";
+    return "Chunchun has completed two major internships:\n1. **Web Developer Intern at Blagweb Software Solution** (Dec 2024 - Jan 2025): Full-stack React/Node web development and AI chatbot integrations.\n2. **MERN Stack Intern at Edunet Foundation** (Jun 2024 - Jul 2024): Authentication, MongoDB schemas, and UI styling.";
   }
   if (q.includes('certif')) {
-    return "Chunchun holds 4 certifications: Web Development Internship (Blagweb Software Solution), MERN Stack (Edunet Foundation), Web Development (Tech Octanet Services), and JavaScript Mastery (Kodyfier).";
+    return "Chunchun holds 4 verified certifications:\n1. Web Development Internship (Blagweb Software Solution)\n2. MERN Stack Web Development (Edunet Foundation)\n3. Web Development Internship (Tech Octanet Services)\n4. JavaScript Mastery Course (Kodyfier).";
   }
-  if (q.includes('achievement') || q.includes('winner') || q.includes('challenge')) {
-    return "Chunchun won 1st Place in the College Level Ideation Challenge 2024 (Anna University Affiliated Campus) for the 'Smart Social Security Fund Cessation System'.";
+  if (q.includes('achievement') || q.includes('winner') || q.includes('challenge') || q.includes('ideation')) {
+    return "Chunchun won **1st Place** in the **College Level Ideation Challenge 2024** (Anna University Affiliated Campus) for the 'Smart Social Security Fund Cessation System', an automated model resolving inactive fund leaks.";
+  }
+  if (q.includes('integrate') || q.includes('gemini')) {
+    return "Chunchun integrated Google's Gemini API into his Express backend using the official SDK. The backend binds structured portfolio context and safety boundaries before requesting generateContent(), securely protecting API keys from client exposure.";
   }
   return "I am Chunchun's AI Portfolio Assistant! Feel free to ask about his projects (AI E-Commerce, Hospital Management, Zomato Clone), React/Node stack, database skills, or certifications.";
 }

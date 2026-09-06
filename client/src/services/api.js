@@ -1,10 +1,11 @@
 import axios from 'axios';
 
 // Normalize API Base URL so it functions whether trailing slash or /api is present or omitted
-const defaultBaseUrl = import.meta.env.DEV ? 'http://localhost:5021/api' : 'https://chunchun-portfolio.onrender.com/api';
+// In development, default to local server; in production on Vercel, default to '/api' for same-origin serverless endpoints
+const defaultBaseUrl = import.meta.env.DEV ? 'http://localhost:5021/api' : '/api';
 const rawApiUrl = (import.meta.env.VITE_API_URL || defaultBaseUrl).trim();
 const trimmedUrl = rawApiUrl.replace(/\/+$/, '');
-const normalizedBaseURL = trimmedUrl.endsWith('/api') ? trimmedUrl : `${trimmedUrl}/api`;
+const normalizedBaseURL = (trimmedUrl === '' || trimmedUrl.endsWith('/api')) ? (trimmedUrl || '/api') : `${trimmedUrl}/api`;
 
 // Create a configured Axios instance
 const API = axios.create({
