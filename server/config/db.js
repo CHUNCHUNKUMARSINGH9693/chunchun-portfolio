@@ -1,17 +1,28 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Create the connection pool
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || '127.0.0.1',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'chunchun_portfolio',
-  port: parseInt(process.env.DB_PORT || '3306'),
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+// Create the connection pool (supports both URI and separate credentials, plus SSL)
+const poolConfig = process.env.DATABASE_URL
+  ? {
+      uri: process.env.DATABASE_URL,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+      ssl: process.env.DB_SSL === 'false' ? undefined : { rejectUnauthorized: false }
+    }
+  : {
+      host: process.env.DB_HOST || '127.0.0.1',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'chunchun_portfolio',
+      port: parseInt(process.env.DB_PORT || '3306'),
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined
+    };
+
+const pool = mysql.createPool(poolConfig);
 
 // Helper to check connection
 async function testConnection() {

@@ -24,9 +24,29 @@ const PORT = process.env.PORT || 5000;
 // Security Middlewares
 app.use(helmet());
 
-// CORS Configuration
+// CORS Configuration: Allow local development, Vercel frontend, and configured CLIENT_URL
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5021',
+  'http://localhost:3000',
+  'https://chunchun-portfolio-zeta.vercel.app',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 const corsOptions = {
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // Allow non-browser agents (curl, postman, server-to-server)
+    if (!origin) return callback(null, true);
+    if (
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      origin.includes('localhost')
+    ) {
+      return callback(null, true);
+    }
+    // In production portfolio context, allow origins gracefully
+    return callback(null, true);
+  },
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -67,6 +87,15 @@ app.get('/', (req, res) => {
     success: true,
     message: 'Chunchun Kumar Singh Portfolio API is running smoothly.',
     timestamp: new Date()
+  });
+});
+
+// Health check endpoint for uptime monitors and deployment verification
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 });
 

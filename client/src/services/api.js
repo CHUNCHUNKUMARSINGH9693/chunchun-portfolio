@@ -1,9 +1,14 @@
 import axios from 'axios';
 
+// Normalize API Base URL so it functions whether trailing slash or /api is present or omitted
+const rawApiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5021/api').trim();
+const trimmedUrl = rawApiUrl.replace(/\/+$/, '');
+const normalizedBaseURL = trimmedUrl.endsWith('/api') ? trimmedUrl : `${trimmedUrl}/api`;
+
 // Create a configured Axios instance
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  timeout: 10000,
+  baseURL: normalizedBaseURL,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json'
   }

@@ -67,8 +67,8 @@ let model = null;
 if (process.env.GEMINI_API_KEY) {
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    console.log('Gemini AI service initialized successfully.');
+    model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    console.log('Gemini AI service initialized successfully (gemini-1.5-flash).');
   } catch (error) {
     console.error('Error initializing Gemini AI client:', error.message);
   }

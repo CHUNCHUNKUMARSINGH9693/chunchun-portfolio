@@ -15,11 +15,15 @@ const chat = async (req, res, next) => {
     // Fetch AI response (uses Gemini API or keyword-matching simulation)
     const responseText = await getAIResponse(message);
 
-    // Save the conversation to the database
-    await pool.query(
-      'INSERT INTO ai_conversations (session_id, question, answer) VALUES (?, ?, ?)',
-      [activeSessionId, message, responseText]
-    );
+    // Save the conversation to the database (resilient to database connectivity)
+    try {
+      await pool.query(
+        'INSERT INTO ai_conversations (session_id, question, answer) VALUES (?, ?, ?)',
+        [activeSessionId, message, responseText]
+      );
+    } catch (dbErr) {
+      console.warn('Database conversation log skipped (MySQL unavailable or offline):', dbErr.message);
+    }
 
     res.status(200).json({
       success: true,

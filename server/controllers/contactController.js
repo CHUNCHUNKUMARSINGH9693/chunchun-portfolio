@@ -34,10 +34,16 @@ const submitMessage = async (req, res, next) => {
   const { name, email, subject, message } = req.body;
 
   try {
-    const [result] = await pool.query(
-      'INSERT INTO contact_messages (name, email, subject, message, status) VALUES (?, ?, ?, ?, ?)',
-      [name, email, subject, message, 'unread']
-    );
+    let messageId = null;
+    try {
+      const [result] = await pool.query(
+        'INSERT INTO contact_messages (name, email, subject, message, status) VALUES (?, ?, ?, ?, ?)',
+        [name, email, subject, message, 'unread']
+      );
+      messageId = result.insertId;
+    } catch (dbErr) {
+      console.warn('Database message log skipped (MySQL unavailable or offline):', dbErr.message);
+    }
 
     const smtpUser = process.env.SMTP_USER ? process.env.SMTP_USER.trim() : '';
     const smtpPass = process.env.SMTP_PASS ? process.env.SMTP_PASS.trim() : '';
@@ -122,7 +128,7 @@ const submitMessage = async (req, res, next) => {
       success: true,
       message: 'Message sent successfully! Chunchun will get back to you soon.',
       data: {
-        id: result.insertId
+        id: messageId
       }
     });
   } catch (error) {
