@@ -1,6 +1,5 @@
 import React from 'react';
 import { FiGithub, FiExternalLink, FiArrowRight } from 'react-icons/fi';
-import { Link } from 'react-router-dom';
 
 // Import local project screenshots
 import ecommerceImg from '../assets/ecommerce.png';

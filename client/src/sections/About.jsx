@@ -1,13 +1,7 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { FiCode, FiCpu, FiDatabase, FiServer, FiShield } from 'react-icons/fi';
+import { FiCpu, FiDatabase, FiServer } from 'react-icons/fi';
 import { FaNodeJs, FaReact } from 'react-icons/fa';
-import { 
-  SiJavascript, 
-  SiExpress, 
-  SiMysql, 
-  SiMongodb 
-} from "react-icons/si";
 import AboutImage from '../assets/About.png';
 
 const About = () => {

@@ -40,7 +40,7 @@ const initialCertifications = [
 
 const Certifications = () => {
   const [certifications, setCertifications] = useState(initialCertifications);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCertifications = async () => {
@@ -49,7 +49,7 @@ const Certifications = () => {
         if (response.success && response.data.length > 0) {
           setCertifications(response.data);
         }
-      } catch (error) {
+      } catch {
         console.warn('Backend certifications API unavailable, using local mock fallback.');
       } finally {
         setLoading(false);

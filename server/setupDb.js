@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 async function setupDatabase() {
   console.log('Starting MySQL database schema setup...');
@@ -19,6 +19,32 @@ async function setupDatabase() {
     // Connect to local MySQL server
     const connection = await mysql.createConnection(connectionConfig);
     console.log('Connected to MySQL server successfully.');
+
+    // Ensure database exists and select it
+    await connection.query('CREATE DATABASE IF NOT EXISTS chunchun_portfolio;');
+    await connection.query('USE chunchun_portfolio;');
+
+    // Run schema migrations for existing tables if they were created with DATE type
+    try {
+      await connection.query(`
+        ALTER TABLE experience 
+        MODIFY COLUMN start_date VARCHAR(50) NOT NULL, 
+        MODIFY COLUMN end_date VARCHAR(50) NOT NULL;
+      `);
+      console.log('Migrated experience table date columns to VARCHAR(50).');
+    } catch (e) {
+      // Table may not exist yet or already migrated
+    }
+
+    try {
+      await connection.query(`
+        ALTER TABLE certifications 
+        MODIFY COLUMN issue_date VARCHAR(50) NOT NULL;
+      `);
+      console.log('Migrated certifications table issue_date column to VARCHAR(50).');
+    } catch (e) {
+      // Table may not exist yet or already migrated
+    }
 
     // Read database.sql file from workspace root
     const sqlFilePath = path.join(__dirname, '..', 'database.sql');

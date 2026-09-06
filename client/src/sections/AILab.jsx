@@ -22,20 +22,18 @@ const AILab = () => {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sessionId, setSessionId] = useState('');
-  const chatContainerRef = useRef(null);
-
-  useEffect(() => {
-    // Generate session key on mount
-    const savedSession = localStorage.getItem('aiSessionId');
-    if (savedSession) {
-      setSessionId(savedSession);
-    } else {
+  const [sessionId, setSessionId] = useState(() => {
+    try {
+      const savedSession = localStorage.getItem('aiSessionId');
+      if (savedSession) return savedSession;
       const newSession = `session_${Math.random().toString(36).substring(2, 15)}`;
       localStorage.setItem('aiSessionId', newSession);
-      setSessionId(newSession);
+      return newSession;
+    } catch {
+      return `session_${Math.random().toString(36).substring(2, 15)}`;
     }
-  }, []);
+  });
+  const chatContainerRef = useRef(null);
 
   useEffect(() => {
     // Auto scroll chat to bottom inside container ONLY, to prevent page jumping

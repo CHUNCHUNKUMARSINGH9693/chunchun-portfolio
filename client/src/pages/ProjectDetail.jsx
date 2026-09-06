@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiX, FiGithub, FiExternalLink, FiCpu, FiDatabase, FiServer, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
-import { FaReact } from 'react-icons/fa';
+import { FiX, FiGithub, FiExternalLink, FiCpu, FiDatabase, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
 
 // Tailored rich technical documentation for each project
 const caseStudies = {

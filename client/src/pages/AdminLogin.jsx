@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
-  FiLock, FiMail, FiArrowLeft, FiEye, FiEyeOff, 
+  FiMail, FiArrowLeft, FiEye, FiEyeOff, 
   FiCheckCircle, FiAlertCircle, FiCpu, FiShield, FiKey, FiZap 
 } from 'react-icons/fi';
 import { authService } from '../services/api';

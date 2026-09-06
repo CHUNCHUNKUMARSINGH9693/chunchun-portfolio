@@ -19,7 +19,7 @@ const initialAchievements = [
 
 const Achievements = () => {
   const [achievements, setAchievements] = useState(initialAchievements);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAchievements = async () => {
@@ -33,7 +33,7 @@ const Achievements = () => {
           }));
           setAchievements(merged);
         }
-      } catch (error) {
+      } catch {
         console.warn('Backend achievements API unavailable, using local mock fallback.');
       } finally {
         setLoading(false);

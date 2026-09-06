@@ -48,7 +48,7 @@ const initialProjects = [
 const Projects = () => {
   const [projects, setProjects] = useState(initialProjects);
   const [selectedProjectSlug, setSelectedProjectSlug] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -57,7 +57,7 @@ const Projects = () => {
         if (response.success && response.data.length > 0) {
           setProjects(response.data);
         }
-      } catch (error) {
+      } catch {
         console.warn('Backend projects API unavailable, using local mock fallback.');
       } finally {
         setLoading(false);

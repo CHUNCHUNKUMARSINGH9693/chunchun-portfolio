@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   FiFolder, FiBriefcase, FiLayers, FiAward, FiCpu, FiMessageSquare, 
   FiLogOut, FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiCheckCircle, 
-  FiAlertCircle, FiSearch, FiExternalLink, FiRefreshCw, FiEye, 
-  FiMail, FiCalendar, FiTag, FiShield, FiUser, FiActivity, FiStar, FiFilter
+  FiAlertCircle, FiSearch, FiExternalLink, FiRefreshCw, 
+  FiMail, FiCalendar, FiUser, FiActivity, FiStar, FiFilter
 } from 'react-icons/fi';
 import { 
   authService, projectService, skillService, experienceService, 
@@ -23,7 +23,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
 
   // Current admin profile state
-  const [adminUser, setAdminUser] = useState(() => {
+  const [adminUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('adminUser')) || { name: 'Chunchun Kumar Singh', email: 'admin@chunchun.dev', role: 'admin' };
     } catch {
@@ -53,17 +53,8 @@ const AdminDashboard = () => {
     setTimeout(() => setFeedback({ type: '', text: '' }), 4500);
   };
 
-  // Fetch data for the active tab and metrics
-  useEffect(() => {
-    fetchActiveData();
-  }, [activeTab]);
-
-  // Initial load: fetch all metric counts
-  useEffect(() => {
-    fetchAllMetrics();
-  }, []);
-
-  const fetchActiveData = async () => {
+  const fetchActiveData = useCallback(async () => {
+    await Promise.resolve();
     setLoading(true);
     try {
       if (activeTab === 'projects') {
@@ -96,9 +87,9 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab]);
 
-  const fetchAllMetrics = async () => {
+  const fetchAllMetrics = useCallback(async () => {
     try {
       const [projRes, expRes, skillRes, certRes, achRes, msgRes, aiRes] = await Promise.allSettled([
         projectService.getAll(),
@@ -120,7 +111,29 @@ const AdminDashboard = () => {
     } catch (err) {
       console.warn('Metric summary load notice:', err.message);
     }
-  };
+  }, []);
+
+  // Fetch data for the active tab and metrics
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (mounted) {
+        await fetchActiveData();
+      }
+    })();
+    return () => { mounted = false; };
+  }, [fetchActiveData]);
+
+  // Initial load: fetch all metric counts
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (mounted) {
+        await fetchAllMetrics();
+      }
+    })();
+    return () => { mounted = false; };
+  }, [fetchAllMetrics]);
 
   // Perform Logout
   const executeLogout = () => {

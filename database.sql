@@ -128,25 +128,41 @@ INSERT INTO skills (category, name, description) VALUES
 ('CORE CS', 'Computer Networks', 'OSI model, TCP/IP, HTTP/HTTPS handshake protocol logic.'),
 ('AI', 'Gemini AI', 'Leveraging generative models for AI chat assistants and contextual search.'),
 ('AI', 'AI API Integration', 'Integrating Gemini API securely inside backend middleware controllers.'),
-('AI', 'AI Assistants', 'Designing conversational context prompts for custom chat behavior.');
+('AI', 'AI Assistants', 'Designing conversational context prompts for custom chat behavior.')
+ON DUPLICATE KEY UPDATE category = VALUES(category), description = VALUES(description);
 
--- Seed Experience
-INSERT INTO experience (company, position, description, start_date, end_date, technologies) VALUES
-('Blagweb Software Solution', 'Web Developer Intern', 'Developed responsive user interfaces using React.js. Created structured REST APIs with Node.js and Express.js. Integrated authentication mechanisms and implemented AI-assisted functionalities, resulting in improved system integration and user experience.', 'Dec 2024', 'Jan 2025', 'React,Node.js,Express.js,REST APIs,JWT,MongoDB,Tailwind CSS'),
-('Edunet Foundation', 'MERN Stack Web Development Intern', 'Built full-stack web applications featuring secure logins and user authentication using JWT and bcrypt. Designed databases and APIs for platforms like a Food Discovery and Ordering application. Styled frontend elements with Tailwind CSS.', 'Jun 2024', 'Jul 2024', 'React,Node.js,Express.js,MongoDB,REST APIs,Tailwind CSS,bcrypt,JWT');
+-- Seed Experience (Idempotent: inserts only if not already present)
+INSERT INTO experience (company, position, description, start_date, end_date, technologies)
+SELECT 'Blagweb Software Solution', 'Web Developer Intern', 'Developed responsive user interfaces using React.js. Created structured REST APIs with Node.js and Express.js. Integrated authentication mechanisms and implemented AI-assisted functionalities, resulting in improved system integration and user experience.', 'Dec 2024', 'Jan 2025', 'React,Node.js,Express.js,REST APIs,JWT,MongoDB,Tailwind CSS'
+WHERE NOT EXISTS (SELECT 1 FROM experience WHERE company = 'Blagweb Software Solution' AND position = 'Web Developer Intern');
 
--- Seed Certifications
-INSERT INTO certifications (title, organization, description, certificate_url, issue_date) VALUES
-('Web Development Internship', 'Blagweb Software Solution', 'Developed and deployed a full-stack e-commerce application using MERN stack, JWT authentication, Gemini AI, product management, and order processing.', 'https://drive.google.com/file/d/1M0fYOc6Fkpq346k5_s4pmdUdkR2Q7WY2/view?usp=drive_link', 'April 2026'),
-('MERN Stack Web Development', 'Edunet Foundation', 'Valuable training certificate covering full-stack concepts, database design, and React state management.', 'https://drive.google.com/file/d/1LMrDcJmaj7R_Kxfhpr69eKtjfxaB4hGm/view?usp=drive_link', 'February 2025'),
-('Web Development Internship', 'Tech Octanet Services Pvt Ltd', 'Completion certificate for practical frontend and backend web development tasks.', 'https://drive.google.com/file/d/1H6nD-iWVAii2CT0uDFVKy3ehiaJ5nyT2/view?usp=drive_link', 'May 2024'),
-('JavaScript Mastery Course', 'Kodyfier Pvt Ltd', 'Deep dive certificate covering asynchronous JavaScript, ES6+ features, functional programming, and Node.js integrations.', 'https://drive.google.com/file/d/1nOeJ1sET_RltqrKxNQZozTuhNBglNQV0/view?usp=drive_link', 'September 2025');
+INSERT INTO experience (company, position, description, start_date, end_date, technologies)
+SELECT 'Edunet Foundation', 'MERN Stack Web Development Intern', 'Built full-stack web applications featuring secure logins and user authentication using JWT and bcrypt. Designed databases and APIs for platforms like a Food Discovery and Ordering application. Styled frontend elements with Tailwind CSS.', 'Jun 2024', 'Jul 2024', 'React,Node.js,Express.js,MongoDB,REST APIs,Tailwind CSS,bcrypt,JWT'
+WHERE NOT EXISTS (SELECT 1 FROM experience WHERE company = 'Edunet Foundation' AND position = 'MERN Stack Web Development Intern');
 
--- Seed Achievements
-INSERT INTO achievements (title, organization, description, year, image) VALUES
-('Winner — College Level Ideation Challenge 2024', 'Anna University Affiliated Campus', 'Won first place for proposing and demonstrating the Smart Social Security Fund Cessation System. Built an innovative conceptual model that automatically detects and resolves inactive fund leaks, streamlining public distribution.', '2024', NULL);
+-- Seed Certifications (Idempotent: inserts only if not already present)
+INSERT INTO certifications (title, organization, description, certificate_url, issue_date)
+SELECT 'Web Development Internship', 'Blagweb Software Solution', 'Developed and deployed a full-stack e-commerce application using MERN stack, JWT authentication, Gemini AI, product management, and order processing.', 'https://drive.google.com/file/d/1M0fYOc6Fkpq346k5_s4pmdUdkR2Q7WY2/view?usp=drive_link', 'April 2026'
+WHERE NOT EXISTS (SELECT 1 FROM certifications WHERE title = 'Web Development Internship' AND organization = 'Blagweb Software Solution');
 
--- Seed Projects
+INSERT INTO certifications (title, organization, description, certificate_url, issue_date)
+SELECT 'MERN Stack Web Development', 'Edunet Foundation', 'Valuable training certificate covering full-stack concepts, database design, and React state management.', 'https://drive.google.com/file/d/1LMrDcJmaj7R_Kxfhpr69eKtjfxaB4hGm/view?usp=drive_link', 'February 2025'
+WHERE NOT EXISTS (SELECT 1 FROM certifications WHERE title = 'MERN Stack Web Development' AND organization = 'Edunet Foundation');
+
+INSERT INTO certifications (title, organization, description, certificate_url, issue_date)
+SELECT 'Web Development Internship', 'Tech Octanet Services Pvt Ltd', 'Completion certificate for practical frontend and backend web development tasks.', 'https://drive.google.com/file/d/1H6nD-iWVAii2CT0uDFVKy3ehiaJ5nyT2/view?usp=drive_link', 'May 2024'
+WHERE NOT EXISTS (SELECT 1 FROM certifications WHERE title = 'Web Development Internship' AND organization = 'Tech Octanet Services Pvt Ltd');
+
+INSERT INTO certifications (title, organization, description, certificate_url, issue_date)
+SELECT 'JavaScript Mastery Course', 'Kodyfier Pvt Ltd', 'Deep dive certificate covering asynchronous JavaScript, ES6+ features, functional programming, and Node.js integrations.', 'https://drive.google.com/file/d/1nOeJ1sET_RltqrKxNQZozTuhNBglNQV0/view?usp=drive_link', 'September 2025'
+WHERE NOT EXISTS (SELECT 1 FROM certifications WHERE title = 'JavaScript Mastery Course' AND organization = 'Kodyfier Pvt Ltd');
+
+-- Seed Achievements (Idempotent: inserts only if not already present)
+INSERT INTO achievements (title, organization, description, year, image)
+SELECT 'Winner — College Level Ideation Challenge 2024', 'Anna University Affiliated Campus', 'Won first place for proposing and demonstrating the Smart Social Security Fund Cessation System. Built an innovative conceptual model that automatically detects and resolves inactive fund leaks, streamlining public distribution.', '2024', NULL
+WHERE NOT EXISTS (SELECT 1 FROM achievements WHERE title = 'Winner — College Level Ideation Challenge 2024');
+
+-- Seed Projects (Idempotent: updates existing by unique slug or inserts new)
 INSERT INTO projects (title, slug, description, image, technologies, features, github_url, live_url, featured) VALUES
 ('AI-Powered E-Commerce Platform', 
  'ai-powered-ecommerce-platform', 
@@ -155,7 +171,7 @@ INSERT INTO projects (title, slug, description, image, technologies, features, g
  'React,Axios,Node.js,Express.js,MongoDB,Tailwind CSS,JWT,Gemini AI', 
  '["User registration & Login", "JWT authentication & Role-based panels", "Shopping cart state & checkout flow", "Product category searches & filters", "AI Shopping Assistant chatbot in real-time"]', 
  'https://github.com/CHUNCHUNKUMARSINGH9693/ecommerce', 
- 'https://ai-ecommerce-demo.example.com', 
+ 'https://my-portfolio-chunchun.vercel.app', 
  TRUE),
 ('AI-Assisted Hospital Management System', 
  'ai-assisted-hospital-management', 
@@ -164,7 +180,7 @@ INSERT INTO projects (title, slug, description, image, technologies, features, g
  'React,Axios,Node.js,Express.js,MongoDB,Tailwind CSS,Gemini AI', 
  '["Patient registration & records management", "Doctor shifts & appointment booking", "General AI Assistant for navigation & FAQ help (no medical diagnoses)", "Protected admin dashboard panels", "Prescription and pharmacy status records"]', 
  'https://github.com/CHUNCHUNKUMARSINGH9693/E-Hospital-Management-System', 
- 'https://hospital-demo.example.com', 
+ 'https://my-portfolio-chunchun.vercel.app', 
  TRUE),
 ('Zomato Clone', 
  'food-discovery-ordering-platform', 
@@ -174,4 +190,14 @@ INSERT INTO projects (title, slug, description, image, technologies, features, g
  '["Interactive restaurant layout & search listing", "Menu item filters & categories", "Persistent cart management using React Context", "Mock checkout & order tracking system", "Node.js REST API with full endpoints"]', 
  'https://github.com/CHUNCHUNKUMARSINGH9693/Edunet-Zomoto-Clone', 
  'https://zomoto-clone-weld.vercel.app/', 
- FALSE);
+ FALSE)
+ON DUPLICATE KEY UPDATE
+ title = VALUES(title),
+ description = VALUES(description),
+ image = VALUES(image),
+ technologies = VALUES(technologies),
+ features = VALUES(features),
+ github_url = VALUES(github_url),
+ live_url = VALUES(live_url),
+ featured = VALUES(featured);
+

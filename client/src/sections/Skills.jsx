@@ -42,7 +42,7 @@ const Skills = () => {
   const [skills, setSkills] = useState(initialSkills);
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [showAll, setShowAll] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSkills = async () => {
@@ -51,7 +51,7 @@ const Skills = () => {
         if (response.success && response.data.length > 0) {
           setSkills(response.data);
         }
-      } catch (error) {
+      } catch {
         console.warn('Backend skills API unavailable, using local mock fallback.');
       } finally {
         setLoading(false);
@@ -59,11 +59,6 @@ const Skills = () => {
     };
     fetchSkills();
   }, []);
-
-  // Reset showAll when switching categories
-  useEffect(() => {
-    setShowAll(false);
-  }, [activeCategory]);
 
   const categories = ['ALL', ...Object.keys(categoryConfig)];
 
@@ -103,7 +98,10 @@ const Skills = () => {
             return (
               <button
                 key={cat}
-                onClick={() => setActiveCategory(cat)}
+                onClick={() => {
+                  setActiveCategory(cat);
+                  setShowAll(false);
+                }}
                 className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 focus:outline-none ${
                   activeCategory === cat
                     ? 'bg-brand-blue text-white shadow-md shadow-brand-blue/15'
@@ -122,7 +120,7 @@ const Skills = () => {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
           layout
         >
-          {displayedSkills.map((skill, idx) => {
+          {displayedSkills.map((skill) => {
             const config = categoryConfig[skill.category] || { label: skill.category, icon: null };
             
             return (

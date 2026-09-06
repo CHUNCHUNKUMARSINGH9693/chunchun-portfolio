@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FiPlay, FiTerminal, FiGlobe, FiCornerDownRight, FiLock } from 'react-icons/fi';
+import { FiPlay, FiTerminal, FiGlobe, FiLock } from 'react-icons/fi';
 import axios from 'axios';
 
 const endpoints = [

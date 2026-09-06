@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiGithub, FiLinkedin, FiDownload, FiMessageSquare, FiCode, FiCpu, FiDatabase } from 'react-icons/fi';
+import { FiGithub, FiLinkedin, FiDownload, FiCode, FiCpu, FiDatabase } from 'react-icons/fi';
 import { FaReact, FaNodeJs } from 'react-icons/fa';
 import heroImage from '../assets/hero1.png';
 

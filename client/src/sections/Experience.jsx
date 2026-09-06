@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiBriefcase, FiCalendar, FiMapPin } from 'react-icons/fi';
+import { FiBriefcase, FiCalendar } from 'react-icons/fi';
 import { experienceService } from '../services/api';
 
 const initialExperience = [
@@ -35,7 +35,7 @@ const initialExperience = [
 
 const Experience = () => {
   const [experiences, setExperiences] = useState(initialExperience);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchExperience = async () => {
@@ -44,7 +44,7 @@ const Experience = () => {
         if (response.success && response.data.length > 0) {
           setExperiences(response.data);
         }
-      } catch (error) {
+      } catch {
         console.warn('Backend experience API unavailable, using local mock fallback.');
       } finally {
         setLoading(false);
