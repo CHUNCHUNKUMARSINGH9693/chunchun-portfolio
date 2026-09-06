@@ -494,6 +494,12 @@ This utility verifies:
 
 ---
 
+## ⭐ Support
+
+If you find this portfolio project useful or like the work, please consider giving the repository a ⭐ on GitHub. It helps support the project and motivates me to keep improving it.
+
+Thank you for your support! 🚀
+
 ## 📄 License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is created for learning, development, and portfolio purposes.
