@@ -490,6 +490,7 @@ This utility verifies:
 - **Email**: [chunchunkumarsingh.cse2021@dscet.ac.in](mailto:chunchunkumarsingh.cse2021@dscet.ac.in)
 - **LinkedIn**: [linkedin.com/in/chunchun-kumar-singh](https://linkedin.com)
 - **GitHub**: [github.com/CHUNCHUNKUMARSINGH9693](https://github.com/CHUNCHUNKUMARSINGH9693)
+- **Portfolio**: https://chunchun-portfolio-zeta.vercel.app/
 
 ---
 
