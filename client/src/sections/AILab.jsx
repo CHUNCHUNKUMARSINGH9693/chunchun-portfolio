@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiCpu, FiSend, FiUser, FiInfo, FiTrash2 } from 'react-icons/fi';
 import { aiService } from '../services/api';
+import { getClientAIResponse } from '../services/aiEngine';
 
 const quickPrompts = [
   "What is Chunchun's strongest project?",
@@ -55,21 +56,19 @@ const AILab = () => {
 
     try {
       const response = await aiService.chat(userMsg, sessionId);
-      if (response.success) {
+      if (response && response.success && response.answer) {
         setMessages(prev => [...prev, { sender: 'ai', text: response.answer }]);
         if (response.sessionId && response.sessionId !== sessionId) {
           setSessionId(response.sessionId);
           localStorage.setItem('aiSessionId', response.sessionId);
         }
-      } else {
-        setMessages(prev => [...prev, { sender: 'ai', text: "Error: Could not retrieve a proper reply. Try again later." }]);
+        return;
       }
+      throw new Error(response?.message || 'Invalid server response');
     } catch (error) {
-      console.error('AI chat failed:', error.message);
-      setMessages(prev => [...prev, { 
-        sender: 'ai', 
-        text: "I couldn't reach the portfolio server. Please make sure the backend is running, or double check your connection." 
-      }]);
+      console.warn('Live backend response unavailable, activating intelligent portfolio AI engine:', error.message);
+      const fallbackAnswer = getClientAIResponse(userMsg);
+      setMessages(prev => [...prev, { sender: 'ai', text: fallbackAnswer }]);
     } finally {
       setLoading(false);
     }
